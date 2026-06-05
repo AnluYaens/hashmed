@@ -16,7 +16,7 @@
     "format": "prettier --write './**/*.(ts|sol)'",
     "lint": "eslint",
     "lint-staged": "eslint",
-    "test": "HEDERA_FORKING=true REPORT_GAS=true hardhat test",
+    "test": "REPORT_GAS=true hardhat test",
     "verify": "node scripts/verifyHedera.js",
     "verify:testnet": "node scripts/verifyHedera.js 296",
     "verify:mainnet": "node scripts/verifyHedera.js 295",

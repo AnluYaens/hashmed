@@ -1,17 +1,17 @@
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import type { DeployFunction } from "hardhat-deploy/types";
 
-const deployHederaToken: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const deployFileRegistry: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
 
-  await deploy("HederaToken", {
+  await deploy("FileRegistry", {
     from: deployer,
-    args: [deployer],
+    args: [],
     log: true,
     autoMine: true,
   });
 };
 
-deployHederaToken.tags = ["HederaToken"];
-export default deployHederaToken;
+deployFileRegistry.tags = ["FileRegistry"];
+export default deployFileRegistry;

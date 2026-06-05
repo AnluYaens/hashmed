@@ -21,6 +21,11 @@ import generateTsAbis from "./scripts/generateTsAbis";
 // Hedera JSON-RPC URL (testnet default). Set HEDERA_RPC_URL in .env for mainnet.
 const hederaRpcUrl = process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api";
 
+// Forking the live Hedera network is opt-in (yarn hardhat:chain / yarn hardhat:fork set HEDERA_FORKING=true).
+// The FileRegistry contract is pure EVM and does not touch HTS/HSS precompiles, so unit tests and local
+// compiles run hermetically without forking. Enable forking only when you need live Hedera system contracts.
+const enableForking = process.env.HEDERA_FORKING === "true";
+
 // Deployer key: run `yarn account:generate` or `yarn account:import`, or set __RUNTIME_DEPLOYER_PRIVATE_KEY at runtime.
 const deployerPrivateKey =
   process.env.__RUNTIME_DEPLOYER_PRIVATE_KEY ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -46,14 +51,16 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhat: {
-      forking: {
-        url: hederaRpcUrl,
-        // @ts-expect-error - custom property for hedera-forking plugin
-        chainId: 296,
-        workerPort: 10001,
-      },
-    },
+    hardhat: enableForking
+      ? {
+          forking: {
+            url: hederaRpcUrl,
+            // @ts-expect-error - custom property for hedera-forking plugin
+            chainId: 296,
+            workerPort: 10001,
+          },
+        }
+      : {},
     hederaTestnet: {
       url: "https://testnet.hashio.io/api",
       accounts: [deployerPrivateKey],
