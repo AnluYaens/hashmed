@@ -15,6 +15,8 @@ pragma solidity ^0.8.28;
  *  - Private files are gated behind an x402 payment of `priceTinybar` HBAR to
  *    the owner's `payToAccountId`, settled per-download. There is no allow-list:
  *    a file is made effectively private by setting an arbitrarily high price.
+ *  - Delisted files are treated as not found (no downloads, no marketplace row).
+ *    The owner may register the same `objectKey` again after delisting.
  *
  * The bucket is private and all reads flow through the server's presigned URLs,
  * so storing `objectKey` on-chain does not leak the file contents.
@@ -77,6 +79,9 @@ contract FileRegistry {
 
     /// @notice Emitted when a file's payout account is updated.
     event PayToChanged(bytes32 indexed fileId, string oldPayToAccountId, string newPayToAccountId);
+
+    /// @notice Emitted when an owner delists a file from the marketplace.
+    event FileDelisted(bytes32 indexed fileId, address indexed owner);
 
     /// @notice Thrown when registering a file id that already exists.
     error FileAlreadyRegistered(bytes32 fileId);
@@ -188,6 +193,20 @@ contract FileRegistry {
     }
 
     /**
+     * @notice Remove a file from the marketplace and block lookups by `fileId`.
+     * @dev Sets `exists` to false and removes `fileId` from the enumeration array so
+     *      `getFiles` and `getFileCount` stay accurate. Off-chain objects in MinIO are not
+     *      deleted; the owner must manage storage separately. The same `objectKey` may be
+     *      registered again after delisting.
+     * @param fileId Id of the file to delist.
+     */
+    function delistFile(bytes32 fileId) external onlyFileOwner(fileId) {
+        _files[fileId].exists = false;
+        _removeFromFileIds(fileId);
+        emit FileDelisted(fileId, msg.sender);
+    }
+
+    /**
      * @notice Deterministic file id for an (owner, objectKey) pair.
      * @param owner Address registering the file.
      * @param objectKey Storage object key.
@@ -208,7 +227,7 @@ contract FileRegistry {
         return file;
     }
 
-    /// @notice Total number of registered files.
+    /// @notice Number of active (non-delist) files in the marketplace.
     function getFileCount() external view returns (uint256) {
         return _fileIds.length;
     }
@@ -239,6 +258,18 @@ contract FileRegistry {
             bytes32 id = _fileIds[offset + i];
             ids[i] = id;
             files[i] = _files[id];
+        }
+    }
+
+    /// @dev Removes `fileId` from `_fileIds` using swap-and-pop (O(n) scan; fine for template scale).
+    function _removeFromFileIds(bytes32 fileId) private {
+        uint256 len = _fileIds.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_fileIds[i] == fileId) {
+                _fileIds[i] = _fileIds[len - 1];
+                _fileIds.pop();
+                return;
+            }
         }
     }
 }

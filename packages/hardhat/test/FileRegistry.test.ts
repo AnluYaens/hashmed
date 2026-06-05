@@ -217,6 +217,66 @@ describe("FileRegistry", function () {
     });
   });
 
+  describe("delistFile", function () {
+    it("delists a file, emits FileDelisted, and removes it from the marketplace", async function () {
+      const { registry, owner } = await deployFixture();
+      await register(registry);
+      const fileId = await registry.computeFileId(owner.address, sample.objectKey);
+
+      await expect(registry.delistFile(fileId)).to.emit(registry, "FileDelisted").withArgs(fileId, owner.address);
+
+      expect(await registry.getFileCount()).to.equal(0n);
+      await expect(registry.getFile(fileId)).to.be.revertedWithCustomError(registry, "FileNotFound").withArgs(fileId);
+
+      const [ids] = await registry.getFiles(0, 10);
+      expect(ids.length).to.equal(0);
+    });
+
+    it("excludes a delisted file from paginated listings", async function () {
+      const { registry, owner } = await deployFixture();
+      await register(registry, { objectKey: "uploads/a.bin", name: "A" });
+      await register(registry, { objectKey: "uploads/b.bin", name: "B" });
+      await register(registry, { objectKey: "uploads/c.bin", name: "C" });
+      const fileIdB = await registry.computeFileId(owner.address, "uploads/b.bin");
+
+      await registry.delistFile(fileIdB);
+      expect(await registry.getFileCount()).to.equal(2n);
+
+      const [, files] = await registry.getFiles(0, 10);
+      expect(files.map(f => f.name)).to.deep.equal(["A", "C"]);
+    });
+
+    it("lets the owner re-register the same object key after delisting", async function () {
+      const { registry, owner } = await deployFixture();
+      await register(registry);
+      const fileId = await registry.computeFileId(owner.address, sample.objectKey);
+      await registry.delistFile(fileId);
+
+      await expect(register(registry, { name: "Re-listed" })).to.emit(registry, "FileRegistered");
+      expect(await registry.getFileCount()).to.equal(1n);
+      expect((await registry.getFile(fileId)).name).to.equal("Re-listed");
+    });
+
+    it("reverts for a non-owner", async function () {
+      const { registry, owner, alice } = await deployFixture();
+      await register(registry);
+      const fileId = await registry.computeFileId(owner.address, sample.objectKey);
+      await expect(registry.connect(alice).delistFile(fileId))
+        .to.be.revertedWithCustomError(registry, "NotFileOwner")
+        .withArgs(fileId, alice.address);
+    });
+
+    it("reverts when delisting twice", async function () {
+      const { registry, owner } = await deployFixture();
+      await register(registry);
+      const fileId = await registry.computeFileId(owner.address, sample.objectKey);
+      await registry.delistFile(fileId);
+      await expect(registry.delistFile(fileId))
+        .to.be.revertedWithCustomError(registry, "FileNotFound")
+        .withArgs(fileId);
+    });
+  });
+
   describe("getFiles pagination", function () {
     async function withThreeFiles() {
       const ctx = await deployFixture();
