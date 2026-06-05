@@ -17,22 +17,27 @@ setup-deployer:
 	rm -rf broadcast/Deploy.s.sol/31337
 	cast wallet import --private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6 --unsafe-password 'localhost' scaffold-hbar-default
 
-# Deploy the contracts to the local Hedera-forked node (start with `make fork` or `yarn fork` in this package)
-deploy: setup-deployer
+# Deploy the contracts
+deploy:
 	@if [ ! -f "$(DEPLOY_SCRIPT)" ]; then \
 		echo "Error: Deploy script '$(DEPLOY_SCRIPT)' not found"; \
 		exit 1; \
 	fi
 	@mkdir -p deployments
 	@if [ "$(RPC_URL)" = "localhost" ]; then \
+		$(MAKE) setup-deployer; \
 		rm -rf broadcast/Deploy.s.sol/31337; \
 		if [ "$(ETH_KEYSTORE_ACCOUNT)" = "scaffold-hbar-default" ]; then \
 			forge script $(DEPLOY_SCRIPT) --rpc-url localhost --password localhost --broadcast --ffi; \
 		else \
-			forge script $(DEPLOY_SCRIPT) --rpc-url localhost --broadcast --ffi; \
+			forge script $(DEPLOY_SCRIPT) --rpc-url localhost --account $(ETH_KEYSTORE_ACCOUNT) --broadcast --ffi; \
 		fi \
+	elif [ "$(RPC_URL)" = "hedera_testnet" ]; then \
+		forge script $(DEPLOY_SCRIPT) --rpc-url https://testnet.hashio.io/api --account $(ETH_KEYSTORE_ACCOUNT) --broadcast --ffi --slow --legacy --skip-simulation; \
+	elif [ "$(RPC_URL)" = "hedera_mainnet" ]; then \
+		forge script $(DEPLOY_SCRIPT) --rpc-url https://mainnet.hashio.io/api --account $(ETH_KEYSTORE_ACCOUNT) --broadcast --ffi --slow --legacy --skip-simulation; \
 	else \
-		forge script $(DEPLOY_SCRIPT) --rpc-url $(RPC_URL) --broadcast --ffi --slow; \
+		forge script $(DEPLOY_SCRIPT) --rpc-url $(RPC_URL) --account $(ETH_KEYSTORE_ACCOUNT) --broadcast --ffi --slow; \
 	fi
 
 # Deploy and generate ABIs (used by scripts-js/parseArgs.js)
@@ -70,13 +75,16 @@ lint:
 test:
 	forge test
 
-# Verify contracts
-# For Hedera networks (chainId 295/296) this calls verifyHedera.js which uses
-# Hashscan's legacy Sourcify v1 API directly (forge's built-in Sourcify client
-# uses APIv2 which Hashscan does not support).
+# Verify contracts on Sourcify (Hedera is now supported on the main Sourcify instance)
+# Usage: make verify CONTRACT=0xAddress CONTRACT_PATH=contracts/MyContract.sol:MyContract CHAIN_ID=296
+# See: https://hedera.com/blog/smart-contract-verification-sourcify-dev-now-supported
 verify:
-	@if [ "$(RPC_URL)" = "hedera_testnet" ] || [ "$(RPC_URL)" = "hedera_mainnet" ]; then \
-		node scripts-js/verifyHedera.js $$([ "$(RPC_URL)" = "hedera_mainnet" ] && echo 295 || echo 296); \
-	else \
-		forge script script/VerifyAll.s.sol --ffi --rpc-url $(RPC_URL); \
+	@if [ -z "$(CONTRACT)" ] || [ -z "$(CONTRACT_PATH)" ]; then \
+		echo "Usage: make verify CONTRACT=0xAddress CONTRACT_PATH=contracts/MyContract.sol:MyContract CHAIN_ID=296"; \
+		echo ""; \
+		echo "Or use yarn commands:"; \
+		echo "  yarn verify:testnet 0xAddress contracts/MyContract.sol:MyContract"; \
+		echo "  yarn verify:mainnet 0xAddress contracts/MyContract.sol:MyContract"; \
+		exit 1; \
 	fi
+	forge verify-contract $(CONTRACT) $(CONTRACT_PATH) --chain-id $(CHAIN_ID) --verifier sourcify
