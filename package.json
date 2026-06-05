@@ -64,6 +64,7 @@
     "next:vercel": "yarn workspace @sh/nextjs vercel",
     "next:vercel:login": "yarn workspace @sh/nextjs vercel:login",
     "next:vercel:yolo": "yarn workspace @sh/nextjs vercel:yolo",
+    "x402:buy": "yarn workspace @sh/nextjs x402:buy",
     "postinstall": "husky",
     "precommit": "lint-staged",
     "lint-staged": "lint-staged"

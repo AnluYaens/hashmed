@@ -1,5 +1,6 @@
 import { type Address, type Hex, createPublicClient, getAddress, http } from "viem";
 import deployedContracts from "~~/contracts/deployedContracts";
+import { FILE_REGISTRY_ABI } from "~~/contracts/fileRegistryAbi";
 import scaffoldConfig from "~~/scaffold.config";
 
 /**
@@ -8,36 +9,9 @@ import scaffoldConfig from "~~/scaffold.config";
  * The registry is the source of truth for who owns a file, what it costs, and
  * whether it is public. The resource server reads it on every download to
  * decide between "serve for free" and "gate behind an x402 payment". Writes
- * (register / set price / set visibility) happen from the browser via the
- * Scaffold-HBAR contract hooks, never here.
+ * (register / set price / set visibility) happen from the browser via wagmi,
+ * never here.
  */
-
-/** Minimal ABI covering only the read paths the resource server needs. */
-const FILE_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "getFile",
-    stateMutability: "view",
-    inputs: [{ name: "fileId", type: "bytes32" }],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        components: [
-          { name: "owner", type: "address" },
-          { name: "payToAccountId", type: "string" },
-          { name: "priceTinybar", type: "uint256" },
-          { name: "isPublic", type: "bool" },
-          { name: "objectKey", type: "string" },
-          { name: "contentHash", type: "bytes32" },
-          { name: "name", type: "string" },
-          { name: "mimeType", type: "string" },
-          { name: "exists", type: "bool" },
-        ],
-      },
-    ],
-  },
-] as const;
 
 /** A registered file as returned by the registry, normalised for server use. */
 export type RegistryFile = {
@@ -109,6 +83,63 @@ export function isFileId(value: string): value is Hex {
   return HEX_32.test(value);
 }
 
+/** JSON-safe, public-facing view of a file (bigint price serialized to string). */
+export type PublicFile = {
+  fileId: Hex;
+  name: string;
+  mimeType: string;
+  isPublic: boolean;
+  priceTinybar: string;
+  owner: Address;
+  payToAccountId: string;
+  contentHash: Hex;
+};
+
+/**
+ * Project a {@link RegistryFile} to its public, JSON-serialisable form.
+ *
+ * Deliberately omits `objectKey`: the storage key is an internal detail and the
+ * bucket is private, so it never needs to reach the client.
+ */
+export function toPublicFile(file: RegistryFile): PublicFile {
+  return {
+    fileId: file.fileId,
+    name: file.name,
+    mimeType: file.mimeType,
+    isPublic: file.isPublic,
+    priceTinybar: file.priceTinybar.toString(),
+    owner: file.owner,
+    payToAccountId: file.payToAccountId,
+    contentHash: file.contentHash,
+  };
+}
+
+type RawFileItem = {
+  owner: Address;
+  payToAccountId: string;
+  priceTinybar: bigint;
+  isPublic: boolean;
+  objectKey: string;
+  contentHash: Hex;
+  name: string;
+  mimeType: string;
+  exists: boolean;
+};
+
+function toRegistryFile(fileId: Hex, file: RawFileItem): RegistryFile {
+  return {
+    fileId,
+    owner: file.owner,
+    payToAccountId: file.payToAccountId,
+    priceTinybar: file.priceTinybar,
+    isPublic: file.isPublic,
+    objectKey: file.objectKey,
+    contentHash: file.contentHash,
+    name: file.name,
+    mimeType: file.mimeType,
+  };
+}
+
 /**
  * Read a single file's metadata from the registry.
  *
@@ -122,26 +153,15 @@ export async function getRegistryFile(fileId: Hex): Promise<RegistryFile | null>
   if (!address) throw new RegistryNotDeployedError();
 
   try {
-    const file = await getClient().readContract({
+    const file = (await getClient().readContract({
       address,
       abi: FILE_REGISTRY_ABI,
       functionName: "getFile",
       args: [fileId],
-    });
+    })) as RawFileItem;
 
     if (!file.exists) return null;
-
-    return {
-      fileId,
-      owner: file.owner,
-      payToAccountId: file.payToAccountId,
-      priceTinybar: file.priceTinybar,
-      isPublic: file.isPublic,
-      objectKey: file.objectKey,
-      contentHash: file.contentHash,
-      name: file.name,
-      mimeType: file.mimeType,
-    };
+    return toRegistryFile(fileId, file);
   } catch (error) {
     // `getFile` reverts with `FileNotFound` for unknown ids; treat as not found.
     if (error instanceof Error && /FileNotFound|reverted/i.test(error.message)) {
@@ -149,4 +169,35 @@ export async function getRegistryFile(fileId: Hex): Promise<RegistryFile | null>
     }
     throw error;
   }
+}
+
+/**
+ * Read a page of registered files for the marketplace listing.
+ *
+ * @param offset - Index to start from.
+ * @param limit - Maximum number of files to return.
+ * @returns The page of files (may be empty) and the total registered count.
+ * @throws {RegistryNotDeployedError} When no registry address is configured.
+ */
+export async function listRegistryFiles(
+  offset: number,
+  limit: number,
+): Promise<{ files: RegistryFile[]; total: number }> {
+  const address = getFileRegistryAddress();
+  if (!address) throw new RegistryNotDeployedError();
+
+  const client = getClient();
+  const [total, page] = await Promise.all([
+    client.readContract({ address, abi: FILE_REGISTRY_ABI, functionName: "getFileCount" }) as Promise<bigint>,
+    client.readContract({
+      address,
+      abi: FILE_REGISTRY_ABI,
+      functionName: "getFiles",
+      args: [BigInt(offset), BigInt(limit)],
+    }) as Promise<readonly [readonly Hex[], readonly RawFileItem[]]>,
+  ]);
+
+  const [ids, items] = page;
+  const files = items.map((item, i) => toRegistryFile(ids[i], item));
+  return { files, total: Number(total) };
 }

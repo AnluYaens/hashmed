@@ -5,7 +5,7 @@ import {
   encodePaymentResponseHeader,
 } from "@x402/core/http";
 import type { PaymentRequirements, ResourceInfo } from "@x402/core/types";
-import { RegistryNotDeployedError, getRegistryFile, isFileId } from "~~/services/registry/server";
+import { RegistryNotDeployedError, getRegistryFile, isFileId, toPublicFile } from "~~/services/registry/server";
 import { createDownloadUrl } from "~~/services/storage/client";
 import {
   HBAR_ASSET,
@@ -62,7 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       fileName: file.name,
       contentType: file.mimeType,
     });
-    return NextResponse.json({ url, file: describe(file) });
+    return NextResponse.json({ url, file: toPublicFile(file) });
   }
 
   // Private files are gated behind a fresh x402 payment.
@@ -133,7 +133,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const response = NextResponse.json({
     url,
-    file: describe(file),
+    file: toPublicFile(file),
     payment: {
       transaction: settlement.transaction,
       payer: settlement.payer,
@@ -142,18 +142,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
   response.headers.set("PAYMENT-RESPONSE", encodePaymentResponseHeader(settlement));
   return response;
-}
-
-/** Public-safe view of a registry file (omits nothing sensitive: keys are random and the bucket is private). */
-function describe(file: NonNullable<Awaited<ReturnType<typeof getRegistryFile>>>) {
-  return {
-    fileId: file.fileId,
-    name: file.name,
-    mimeType: file.mimeType,
-    isPublic: file.isPublic,
-    priceTinybar: file.priceTinybar.toString(),
-    owner: file.owner,
-  };
 }
 
 /**

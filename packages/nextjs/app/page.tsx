@@ -5,7 +5,7 @@ import Link from "next/link";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { BugAntIcon, MagnifyingGlassIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 
@@ -79,7 +79,20 @@ const Home: NextPage = () => {
         </div>
 
         <div className="w-full max-w-4xl mx-auto px-5 mt-8 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
+              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
+                <ShoppingBagIcon className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="font-bold text-lg mb-2">File Marketplace</h3>
+              <p className="text-base-content/70 text-sm m-0 mb-6">
+                Upload files and sell access per download with x402 micropayments in HBAR.
+              </p>
+              <Link href="/files" passHref className="btn btn-primary btn-sm">
+                Open Marketplace
+              </Link>
+            </div>
+
             <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
                 <BugAntIcon className="h-7 w-7 text-white" />
