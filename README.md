@@ -2,6 +2,12 @@
 
 A [Scaffold-HBAR](https://github.com/buidler-labs/scaffold-hbar) template for a **pay-per-download file marketplace** on Hedera using [x402](https://x402.org/).
 
+```bash
+npx create-scaffold-hbar@latest --template x402-pay-per-use
+```
+
+Or clone this repo directly for development on the template branch (`templates/x402-pay-per-use`).
+
 Sellers upload files to private **MinIO** storage and register them on-chain with `FileRegistry`. Buyers pay in **HBAR** via **HashPack**; a self-hosted **x402 Hedera facilitator** verifies and settles each payment on testnet before the resource server issues a short-lived download URL.
 
 ## Prerequisites

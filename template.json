@@ -1,16 +1,36 @@
 {
-  "name": "blank",
-  "description": "Blank Scaffold-HBAR starter with a minimal setup and no example contracts.",
+  "name": "x402-pay-per-use",
+  "description": "Pay-per-download file marketplace on Hedera using x402. Private MinIO storage, self-hosted facilitator, FileRegistry on testnet.",
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": ["nextjs-app"],
-      "solidityFramework": ["foundry", "hardhat"],
+      "solidityFramework": ["hardhat"],
       "packageManager": ["yarn", "npm"]
     },
     "defaults": {
       "frontend": "nextjs-app",
-      "solidityFramework": "foundry",
+      "solidityFramework": "hardhat",
       "packageManager": "yarn"
+    },
+    "outro": {
+      "steps": [
+        "x402 pay-per-download marketplace: MinIO + self-hosted facilitator + FileRegistry on Hedera testnet.",
+        "+Copy environment files:",
+        "  cp .env.example .env",
+        "  cp packages/nextjs/.env.example packages/nextjs/.env",
+        "+Configure facilitator fee-payer (ECDSA) in root .env:",
+        "  FACILITATOR_ACCOUNT_ID and FACILITATOR_PRIVATE_KEY",
+        "+Set NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID in packages/nextjs/.env (HashPack)",
+        "+Fund accounts with testnet HBAR:",
+        "  https://portal.hedera.com/faucet",
+        "+Start local infra (MinIO + facilitator): {run:infra:up}",
+        "+Deploy FileRegistry:",
+        "  {run:hardhat:account:generate}",
+        "  {run:hardhat:deploy} --network hederaTestnet",
+        "+Verify on Hashscan: {run:hardhat:verify:testnet}",
+        "+Start the app: {run:next:dev}",
+        "See README.md and RUNBOOK.md for end-to-end verification and {run:x402:buy} agent testing."
+      ]
     }
   }
 }

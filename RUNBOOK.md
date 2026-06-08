@@ -3,9 +3,8 @@
 A step-by-step guide to verifying each part of the template. Sections are added as each
 iteration lands. Run commands from the repository root unless stated otherwise.
 
-> Status: Iterations 1–4 (contract, infra, API routes, client + UI) are implemented and
-> testable below. See **Environment variables** and **Testnet caveats** for configuration
-> reference. Iteration 5 (CLI packaging) is still pending.
+> Status: Iterations 1–5 are implemented. See **Environment variables** and **Testnet
+> caveats** for configuration reference.
 
 ## Prerequisites
 
@@ -329,7 +328,61 @@ hosted facilitator instead (e.g. Blocky402 testnet), set `FACILITATOR_URL` in
 
 ---
 
-## Iteration 5 — Packaging
+## Iteration 5 — Packaging (`create-scaffold-hbar`)
 
-_To be added when implemented. Will cover: `templates/x402-pay-per-use` branch, `template.json`
-entry, `create-scaffold-hbar` CLI registration, and post-scaffold setup steps._
+This template is published as git branch **`templates/x402-pay-per-use`** on the scaffold-hbar
+repo. The CLI downloads that branch via giget — there is no embedded copy in the CLI repo.
+
+### 5.1 What ships in the template
+
+| Piece | Location |
+| --- | --- |
+| Manifest (consumed then deleted by CLI) | `template.json` |
+| Contracts (Hardhat only) | `packages/hardhat/` (`FileRegistry.sol`) |
+| Resource server + UI | `packages/nextjs/` |
+| Self-hosted facilitator | `facilitator/` |
+| Local infra | `docker-compose.yml`, root `.env.example` |
+| Docs | `README.md`, `RUNBOOK.md` |
+
+Foundry is **not** included. `template.json` locks `solidityFramework` to `hardhat` only.
+
+### 5.2 Publish / update the template branch
+
+From a branch that contains the finished template (e.g. `feat/add-x402-resource-server`):
+
+```bash
+# Ensure template.json, package.json (no foundry workspace), and docs are committed.
+git push origin HEAD:templates/x402-pay-per-use
+```
+
+Or merge into `templates/x402-pay-per-use` and push. The branch name must be exactly
+`templates/x402-pay-per-use` so `npx create-scaffold-hbar@latest --template x402-pay-per-use`
+resolves to `buidler-labs/scaffold-hbar#templates/x402-pay-per-use`.
+
+### 5.3 Scaffold a fresh project
+
+```bash
+npx create-scaffold-hbar@latest --template x402-pay-per-use
+```
+
+Interactive mode lists the template automatically once the branch exists on GitHub (GitHub API
+`templates/*` refs). The CLI prints custom **outro steps** from `template.json` (env copy,
+`yarn infra:up`, Hardhat deploy, `yarn next:dev`).
+
+### 5.4 Optional CLI polish (`create-scaffold-hbar` repo)
+
+Not required for discovery. For a friendlier prompt label and offline fallback, add to
+`src/utils/consts.ts` in the `create-hbar` package:
+
+- `TEMPLATE_LABEL_OVERRIDES["x402-pay-per-use"] = "x402 Pay-Per-Use"`
+- `TEMPLATE_CAPABILITIES_FALLBACK["x402-pay-per-use"]` with `solidityFramework: ["hardhat"]`
+
+### 5.5 Post-scaffold smoke test
+
+After scaffolding into a clean directory:
+
+1. `yarn install`
+2. Copy `.env` files and set facilitator + WalletConnect credentials
+3. `yarn infra:up` → `curl localhost:4020/health`
+4. `yarn hardhat:deploy --network hederaTestnet`
+5. `yarn next:dev` → upload a file, pay with HashPack on a private listing
