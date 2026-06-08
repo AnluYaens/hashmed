@@ -13,9 +13,11 @@ type HederaAddressProps = {
   chain: Chain;
   format?: "short" | "long";
   disableAddressLink?: boolean;
+  /** Horizontal alignment of the address block (default: centered). */
+  align?: "start" | "center";
 };
 
-export const HederaAddress = ({ address, chain, format, disableAddressLink }: HederaAddressProps) => {
+export const HederaAddress = ({ address, chain, format, disableAddressLink, align = "center" }: HederaAddressProps) => {
   const [copied, setCopied] = useState(false);
   const { accountId, isLoading } = useHederaAccountId(address, chain.id);
 
@@ -41,8 +43,10 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink }: He
 
   const addressContent = <span className="text-sm font-normal">{displayAddress}</span>;
 
+  const alignClass = align === "start" ? "items-start" : "items-center";
+
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className={`flex flex-col gap-1.5 ${alignClass}`}>
       <div className="flex items-center gap-1.5">
         <BlockieAvatar address={checkSumAddress} size={24} ensImage={null} />
         {disableAddressLink ? (

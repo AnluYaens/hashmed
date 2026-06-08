@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { NextPage } from "next";
@@ -131,7 +131,7 @@ const FileDetail: NextPage = () => {
 
   if (status === "loading") {
     return (
-      <div className="w-full max-w-2xl mx-auto px-5 py-10">
+      <div className="w-full max-w-3xl mx-auto px-5 py-10">
         <div className="h-48 rounded-2xl bg-base-200 animate-pulse" />
       </div>
     );
@@ -139,7 +139,7 @@ const FileDetail: NextPage = () => {
 
   if (status === "error" || !file) {
     return (
-      <div className="w-full max-w-2xl mx-auto px-5 py-10">
+      <div className="w-full max-w-3xl mx-auto px-5 py-10">
         <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
           <ArrowLeftIcon className="h-4 w-4" /> Marketplace
         </Link>
@@ -151,49 +151,38 @@ const FileDetail: NextPage = () => {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-5 py-10">
+    <div className="w-full max-w-3xl mx-auto px-5 py-10">
       <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
         <ArrowLeftIcon className="h-4 w-4" /> Marketplace
       </Link>
 
-      <div className="bg-base-100 border border-base-300 rounded-2xl p-6 flex flex-col gap-5">
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold m-0 break-all">{file.name}</h1>
+      <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 flex flex-col gap-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold m-0 min-w-0 break-words leading-snug">{file.name}</h1>
           {file.isPublic ? (
-            <span className="badge badge-success gap-1 shrink-0">
+            <span className="badge badge-success gap-1 shrink-0 self-start">
               <LockOpenIcon className="h-3 w-3" /> Public
             </span>
           ) : (
-            <span className="badge badge-secondary gap-1 shrink-0">
+            <span className="badge badge-secondary gap-1 shrink-0 self-start">
               <LockClosedIcon className="h-3 w-3" /> Private
             </span>
           )}
         </div>
 
-        <dl className="grid grid-cols-3 gap-y-3 text-sm">
-          <dt className="text-base-content/50">Type</dt>
-          <dd className="col-span-2 break-all">{file.mimeType}</dd>
-
-          <dt className="text-base-content/50">Price</dt>
-          <dd className="col-span-2 font-medium">
-            {file.isPublic ? "Free" : `${formatTinybar(file.priceTinybar)} HBAR / download`}
-          </dd>
-
-          <dt className="text-base-content/50">Owner</dt>
-          <dd className="col-span-2">
-            <HederaAddress address={file.owner as `0x${string}`} chain={targetNetwork} />
-          </dd>
-
-          {!file.isPublic && (
-            <>
-              <dt className="text-base-content/50">Pays to</dt>
-              <dd className="col-span-2 font-mono">{file.payToAccountId}</dd>
-            </>
-          )}
-
-          <dt className="text-base-content/50">SHA-256</dt>
-          <dd className="col-span-2 font-mono text-xs break-all">{file.contentHash}</dd>
-        </dl>
+        <div className="flex flex-col gap-5 text-sm">
+          <FileDetailField label="Type" value={file.mimeType} />
+          <FileDetailField
+            label="Price"
+            value={file.isPublic ? "Free" : `${formatTinybar(file.priceTinybar)} HBAR / download`}
+            emphasize
+          />
+          <FileDetailField label="Owner">
+            <HederaAddress address={file.owner as `0x${string}`} chain={targetNetwork} align="start" />
+          </FileDetailField>
+          {!file.isPublic && <FileDetailField label="Pays to" value={file.payToAccountId} mono />}
+          <FileDetailField label="SHA-256" value={file.contentHash} mono boxed />
+        </div>
 
         <div className="border-t border-base-200 pt-5">
           {file.isPublic ? (
@@ -282,11 +271,44 @@ const FileDetail: NextPage = () => {
   );
 };
 
+const FileDetailField = ({
+  label,
+  value,
+  children,
+  emphasize,
+  mono,
+  boxed,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+  emphasize?: boolean;
+  mono?: boolean;
+  boxed?: boolean;
+}) => (
+  <div className="flex flex-col gap-2">
+    <span className="text-xs font-medium uppercase tracking-wide text-base-content/50">{label}</span>
+    {children ?? (
+      <span
+        className={[
+          emphasize ? "font-medium text-base" : "",
+          mono ? "font-mono text-xs break-all" : "break-words",
+          boxed ? "bg-base-200 rounded-lg px-3 py-2 block" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {value}
+      </span>
+    )}
+  </div>
+);
+
 /** Copy-paste command for paying via the Node agent script (machine-to-machine flow). */
 const AgentSnippet = ({ fileId, resourceUrl }: { fileId: string; resourceUrl: string }) => {
   const command = `RESOURCE_URL="${resourceUrl}" \\\n  BUYER_ACCOUNT_ID=0.0.xxxx BUYER_PRIVATE_KEY=0x... \\\n  yarn x402:buy`;
   return (
-    <div className="bg-base-100 border border-base-300 rounded-2xl p-5 mt-5">
+    <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 mt-5">
       <div className="flex items-center gap-2 mb-2">
         <CommandLineIcon className="h-4 w-4" />
         <span className="font-semibold text-sm">Pay from an agent / script</span>
@@ -348,9 +370,9 @@ const OwnerControls = ({
   };
 
   return (
-    <div className="bg-base-100 border border-base-300 rounded-2xl p-5 mt-5">
+    <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 mt-5">
       <span className="font-semibold text-sm">Owner controls</span>
-      <div className="flex flex-col sm:flex-row gap-3 mt-3">
+      <div className="flex flex-col sm:flex-row gap-3 mt-4">
         <div className="join flex-1">
           <input
             type="text"
