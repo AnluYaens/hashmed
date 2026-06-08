@@ -10,6 +10,9 @@ const deployFileRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
     args: [],
     log: true,
     autoMine: true,
+    // Hedera testnet/mainnet: same values as templates/tokenise-subscriptions (INSUFFICIENT_TX_FEE fix).
+    gasLimit: "3000000",
+    gasPrice: "1100000000000",
   });
 };
 
