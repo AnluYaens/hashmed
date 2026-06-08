@@ -1,17 +1,16 @@
+import type { ClientHederaSigner } from "@x402/hedera";
 import type { Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 /**
  * Browser-side x402 payment client for private downloads.
  *
- * Paying for a private file means signing a Hedera HBAR transfer. That requires
- * the payer's Hedera private key, which we can only read for the in-browser
- * **Burner Wallet** (injected wallets like HashPack/MetaMask never expose their
- * key). For those, or for machine-to-machine use, drive the same endpoint with
- * the Node agent script (`yarn x402:buy`).
+ * Supports:
+ * - **HashPack** (and other Hedera wallets) via WalletConnect `hedera_signTransaction`
+ * - **Burner Wallet** for local dev (private key in localStorage)
+ * - **Node agent** (`yarn x402:buy`) for machine-to-machine use
  *
- * Heavy dependencies (the Hedera SDK and the x402 client libs) are loaded with
- * dynamic `import()` so they are code-split out of the initial bundle and only
- * fetched when a user actually pays.
+ * Heavy dependencies are loaded with dynamic `import()` when a user actually pays.
  */
 
 /** CAIP-2 network the client signs for; must match the resource server. */
@@ -19,6 +18,9 @@ export const X402_CLIENT_NETWORK = process.env.NEXT_PUBLIC_X402_NETWORK ?? "hede
 
 /** localStorage key the Burner Wallet uses to persist its private key. */
 const BURNER_PK_STORAGE_KEY = "burnerWallet.pk";
+
+/** Which in-browser signer to use for x402 payment. */
+export type PaymentSignerMode = "auto" | "hashpack" | "burner";
 
 /** Outcome of a paid download attempt. */
 export type PaidDownload = {
@@ -48,9 +50,6 @@ function shortNetwork(caip2: string): "testnet" | "mainnet" {
 
 /**
  * Resolve the Hedera account id (`0.0.x`) for an EVM address via the mirror node.
- *
- * @param evmAddress - The connected wallet's EVM address.
- * @returns The Hedera account id, or `null` when the address has no account yet.
  */
 async function resolveHederaAccountId(evmAddress: string): Promise<string | null> {
   const network = shortNetwork(X402_CLIENT_NETWORK);
@@ -60,23 +59,75 @@ async function resolveHederaAccountId(evmAddress: string): Promise<string | null
   return data.accountId ?? null;
 }
 
-/**
- * Build an x402 HTTP client whose `exact` Hedera scheme signs with the Burner
- * Wallet key for the given account.
- */
-async function buildBurnerHttpClient(accountId: string, privateKeyHex: Hex) {
-  const [{ PrivateKey }, { createClientHederaSigner }, clientScheme, core] = await Promise.all([
-    import("@hiero-ledger/sdk"),
-    import("@x402/hedera"),
-    import("@x402/hedera/exact/client"),
-    import("@x402/core/client"),
-  ]);
-
-  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
-  const signer = createClientHederaSigner(accountId, privateKey, { network: X402_CLIENT_NETWORK });
+async function buildHttpClient(signer: ClientHederaSigner) {
+  const [clientScheme, core] = await Promise.all([import("@x402/hedera/exact/client"), import("@x402/core/client")]);
   const scheme = new clientScheme.ExactHederaScheme(signer);
   const x402Client = new core.x402Client().register(X402_CLIENT_NETWORK as never, scheme);
   return new core.x402HTTPClient(x402Client);
+}
+
+async function buildBurnerSigner(privateKeyHex: Hex): Promise<ClientHederaSigner> {
+  const [{ PrivateKey }, { createClientHederaSigner }] = await Promise.all([
+    import("@hiero-ledger/sdk"),
+    import("@x402/hedera"),
+  ]);
+
+  const signerAddress = privateKeyToAccount(privateKeyHex).address;
+  const accountId = await resolveHederaAccountId(signerAddress);
+  if (!accountId) {
+    throw new Error(
+      "The Burner Wallet address has no Hedera account yet. Fund it with testnet HBAR (faucet) before paying.",
+    );
+  }
+
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  return createClientHederaSigner(accountId, privateKey, { network: X402_CLIENT_NETWORK });
+}
+
+async function buildHashPackSigner(): Promise<ClientHederaSigner> {
+  const [{ getConnectedHederaAccountIds, getDAppConnector }, { createWalletHederaSigner }] = await Promise.all([
+    import("~~/services/x402/hederaWalletConnect"),
+    import("~~/services/x402/walletSigner"),
+  ]);
+
+  const connector = await getDAppConnector();
+  const accountIds = getConnectedHederaAccountIds(connector);
+  if (accountIds.length === 0) {
+    throw new Error("Connect HashPack first to pay in-browser.");
+  }
+
+  return createWalletHederaSigner(accountIds[0], connector, { network: X402_CLIENT_NETWORK });
+}
+
+async function resolvePaymentSigner(mode: PaymentSignerMode): Promise<ClientHederaSigner> {
+  if (mode === "hashpack") {
+    return buildHashPackSigner();
+  }
+
+  if (mode === "burner") {
+    const privateKeyHex = getBurnerPrivateKey();
+    if (!privateKeyHex) {
+      throw new Error("In-app payment requires the Burner Wallet or HashPack.");
+    }
+    return buildBurnerSigner(privateKeyHex);
+  }
+
+  // auto: prefer HashPack when a WC session exists, otherwise burner
+  try {
+    const { getConnectedHederaAccountIds, getDAppConnector } = await import("~~/services/x402/hederaWalletConnect");
+    const connector = await getDAppConnector();
+    if (getConnectedHederaAccountIds(connector).length > 0) {
+      return buildHashPackSigner();
+    }
+  } catch {
+    // WalletConnect not initialized yet — fall through to burner
+  }
+
+  const privateKeyHex = getBurnerPrivateKey();
+  if (!privateKeyHex) {
+    throw new Error("Connect HashPack or switch to the Burner Wallet to pay in-browser.");
+  }
+  return buildBurnerSigner(privateKeyHex);
 }
 
 /**
@@ -85,27 +136,14 @@ async function buildBurnerHttpClient(accountId: string, privateKeyHex: Hex) {
  * Implements the x402 retry loop: request the resource, read the `402`
  * challenge, sign the HBAR transfer, retry with the `PAYMENT-SIGNATURE` header,
  * and return the URL once settlement succeeds.
- *
- * @param params.resourceUrl - The file's download endpoint.
- * @param params.evmAddress - The connected Burner Wallet's EVM address.
- * @returns The presigned URL plus the settlement transaction id.
- * @throws When no burner key is available, the address has no Hedera account,
- *   the server returns an error, or settlement fails.
  */
-export async function payAndGetDownloadUrl(params: { resourceUrl: string; evmAddress: string }): Promise<PaidDownload> {
-  const privateKeyHex = getBurnerPrivateKey();
-  if (!privateKeyHex) {
-    throw new Error("In-app payment requires the Burner Wallet. Use the agent script for other wallets.");
-  }
+export async function payAndGetDownloadUrl(params: {
+  resourceUrl: string;
+  signer?: PaymentSignerMode;
+}): Promise<PaidDownload> {
+  const signer = await resolvePaymentSigner(params.signer ?? "auto");
+  const httpClient = await buildHttpClient(signer);
 
-  const accountId = await resolveHederaAccountId(params.evmAddress);
-  if (!accountId) {
-    throw new Error("This address has no Hedera account yet. Receive some testnet HBAR to it first.");
-  }
-
-  const httpClient = await buildBurnerHttpClient(accountId, privateKeyHex);
-
-  // 1) First request — expect a 402 challenge (or a free public URL).
   const first = await fetch(params.resourceUrl);
   if (first.ok) {
     const body = (await first.json()) as { url?: string };
@@ -117,7 +155,6 @@ export async function payAndGetDownloadUrl(params: { resourceUrl: string; evmAdd
     throw new Error(body?.error ?? `Request failed with status ${first.status}`);
   }
 
-  // 2) Build and sign the payment from the challenge.
   const challengeBody = await first
     .clone()
     .json()
@@ -126,7 +163,6 @@ export async function payAndGetDownloadUrl(params: { resourceUrl: string; evmAdd
   const payload = await httpClient.createPaymentPayload(paymentRequired);
   const paymentHeaders = httpClient.encodePaymentSignatureHeader(payload);
 
-  // 3) Retry with the signed payment.
   const paid = await fetch(params.resourceUrl, { headers: paymentHeaders });
   const result = await httpClient.processResponse(paid);
 
@@ -138,8 +174,10 @@ export async function payAndGetDownloadUrl(params: { resourceUrl: string; evmAdd
     }
     case "settle_failed":
       throw new Error(`Payment settlement failed: ${result.settleResponse.errorReason ?? "unknown"}`);
-    case "payment_required":
-      throw new Error("Payment was rejected by the server");
+    case "payment_required": {
+      const reason = (result.paymentRequired as { error?: string })?.error ?? "Payment was rejected by the server";
+      throw new Error(reason);
+    }
     case "error": {
       const body = result.body as { error?: string };
       throw new Error(body?.error ?? `Download failed with status ${result.status}`);

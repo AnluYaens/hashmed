@@ -168,7 +168,7 @@ cp packages/nextjs/.env.example packages/nextjs/.env
 ### 3.2 Start the app
 
 ```bash
-yarn start          # Next.js dev server on http://localhost:3000
+yarn next:dev       # Next.js dev server on http://localhost:3000
 ```
 
 ### 3.3 Request an upload URL and PUT a file
@@ -231,8 +231,38 @@ Sanity checks:
 
 ## Iteration 4 — Client + UI
 
-_To be added when implemented. Will cover: end-to-end pay-per-download on testnet via the
-burner-wallet client and the Node agent buyer script._
+End-to-end pay-per-download on testnet via HashPack (WalletConnect), the burner wallet, or the
+Node agent script.
+
+### Prerequisites
+
+- Iterations 1–3 complete (registry deployed, MinIO + facilitator running, `yarn next:dev` up).
+- `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` set in `packages/nextjs/.env` (reused for HashPack).
+- `NEXT_PUBLIC_X402_NETWORK=hedera:testnet` matches `X402_NETWORK`.
+- HashPack mobile app on the same Hedera testnet, funded with testnet HBAR.
+
+### A — Pay with HashPack (browser)
+
+1. Open a **private** file at `/files/<id>`.
+2. Click **Connect HashPack to pay** and approve the WalletConnect session in HashPack.
+3. Click **Pay … HBAR & download** — HashPack prompts to sign the native HBAR transfer.
+4. After settlement you should get a presigned download URL and a tx receipt on the page.
+
+### B — Pay with Burner Wallet (local dev)
+
+1. Connect via RainbowKit → **Development → Burner Wallet**.
+2. Fund the burner’s Hedera account (faucet) if needed.
+3. Pay & download on a private file — signing uses the burner key in localStorage.
+
+### C — Pay from the Node agent
+
+```bash
+RESOURCE_URL="http://localhost:3000/api/files/<fileId>/download" \
+  BUYER_ACCOUNT_ID=0.0.xxxx BUYER_PRIVATE_KEY=0x... \
+  yarn x402:buy
+```
+
+Expect `200` with a presigned URL and `PAYMENT-RESPONSE` settlement metadata.
 
 ## Iteration 5 — Packaging
 

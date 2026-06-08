@@ -15,6 +15,7 @@ import {
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { FILE_REGISTRY_ABI, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import { useHederaWalletConnect } from "~~/hooks/x402/useHederaWalletConnect";
 import { getBurnerPrivateKey, payAndGetDownloadUrl } from "~~/services/x402/client";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { formatTinybar, hbarToTinybar } from "~~/utils/x402";
@@ -32,18 +33,23 @@ type PublicFile = {
 
 const FileDetail: NextPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { address, chain } = useAccount();
+  const { address, chain, connector } = useAccount();
   const { targetNetwork } = useTargetNetwork();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+
+  const BURNER_WALLET_CONNECTOR_ID = "burnerWallet";
+  const isBurnerWallet = connector?.id === BURNER_WALLET_CONNECTOR_ID;
+  const hashpack = useHederaWalletConnect();
+  const canPayWithHashpack = hashpack.isConnected;
+  const canPayWithBurner = isBurnerWallet && !!getBurnerPrivateKey();
+  const canPay = canPayWithHashpack || canPayWithBurner;
 
   const [file, setFile] = useState<PublicFile | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
-  const [hasBurner, setHasBurner] = useState(false);
-
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
   const isOwner = !!address && !!file && address.toLowerCase() === file.owner.toLowerCase();
   const onWrongNetwork = !!chain && chain.id !== targetNetwork.id;
@@ -76,10 +82,6 @@ const FileDetail: NextPage = () => {
     load();
   }, [load]);
 
-  useEffect(() => {
-    setHasBurner(getBurnerPrivateKey() !== null);
-  }, []);
-
   const openUrl = (url: string) => {
     const a = document.createElement("a");
     a.href = url;
@@ -103,15 +105,18 @@ const FileDetail: NextPage = () => {
   };
 
   const handlePaidDownload = async () => {
-    if (!address) {
-      notification.error("Connect your wallet first");
+    if (!canPay) {
+      notification.error("Connect HashPack or switch to the Burner Wallet to pay in-browser.");
       return;
     }
     setDownloading(true);
     setReceipt(null);
-    const toastId = notification.loading("Paying and verifying on Hedera…");
+    const toastId = notification.loading("Signing x402 payment…");
     try {
-      const result = await payAndGetDownloadUrl({ resourceUrl, evmAddress: address });
+      const result = await payAndGetDownloadUrl({
+        resourceUrl,
+        signer: canPayWithHashpack ? "hashpack" : "burner",
+      });
       notification.remove(toastId);
       notification.success("Payment settled — download ready");
       if (result.transaction) setReceipt(result.transaction);
@@ -202,9 +207,35 @@ const FileDetail: NextPage = () => {
             </button>
           ) : (
             <div className="flex flex-col gap-3">
+              {!canPayWithHashpack ? (
+                <button
+                  className="btn btn-outline w-full"
+                  disabled={hashpack.connecting || downloading}
+                  onClick={() => hashpack.connect().catch(e => notification.error(getParsedError(e)))}
+                >
+                  {hashpack.connecting ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    "Connect HashPack to pay"
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center justify-between gap-2 text-xs text-base-content/60 px-1">
+                  <span>
+                    Paying as <span className="font-mono">{hashpack.accountIds[0]}</span>
+                  </span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    disabled={hashpack.connecting || downloading}
+                    onClick={() => hashpack.disconnect().catch(e => notification.error(getParsedError(e)))}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              )}
               <button
                 className="btn btn-primary w-full gap-2"
-                disabled={downloading || !address || onWrongNetwork || !hasBurner}
+                disabled={downloading || !canPay || onWrongNetwork}
                 onClick={handlePaidDownload}
               >
                 {downloading ? (
@@ -214,10 +245,10 @@ const FileDetail: NextPage = () => {
                 )}
                 Pay {formatTinybar(file.priceTinybar)} HBAR & download
               </button>
-              {!address && <span className="text-xs text-center text-base-content/50">Connect a wallet to pay.</span>}
-              {address && !hasBurner && (
+              {!canPay && (
                 <span className="text-xs text-center text-base-content/50">
-                  In-app payment needs the Burner Wallet. With other wallets, use the agent command below.
+                  Connect HashPack above, or use the Burner Wallet (<strong>Development → Burner Wallet</strong>) for
+                  local dev. MetaMask cannot sign native Hedera x402 transfers.
                 </span>
               )}
               {onWrongNetwork && (

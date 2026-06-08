@@ -116,7 +116,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // Verify the payment is valid before doing any work.
   const verification = await server.verifyPayment(payload, matched);
   if (!verification.isValid) {
-    return paymentRequired(server, requirements, resourceInfo, verification.invalidReason ?? "Payment is not valid");
+    const reason =
+      ("invalidMessage" in verification && typeof verification.invalidMessage === "string"
+        ? verification.invalidMessage
+        : undefined) ??
+      verification.invalidReason ??
+      "Payment is not valid";
+    console.error("[api/files/download] payment verify failed", verification);
+    return paymentRequired(server, requirements, resourceInfo, reason);
   }
 
   // Settle (broadcast) the payment. Only deliver the file once funds are captured.
