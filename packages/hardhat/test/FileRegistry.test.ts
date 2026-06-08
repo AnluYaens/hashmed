@@ -329,5 +329,18 @@ describe("FileRegistry", function () {
       const [ids] = await registry.getFiles(0, 0);
       expect(ids.length).to.equal(0);
     });
+
+    it("clamps the page size to MAX_PAGE_SIZE", async function () {
+      const { registry } = await deployFixture();
+      const maxPage = await registry.MAX_PAGE_SIZE();
+      const fileCount = Number(maxPage) + 2;
+
+      for (let i = 0; i < fileCount; i++) {
+        await register(registry, { objectKey: `uploads/cap-${i}.bin`, name: `Cap ${i}` });
+      }
+
+      const [ids] = await registry.getFiles(0, fileCount);
+      expect(ids.length).to.equal(Number(maxPage));
+    });
   });
 });

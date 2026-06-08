@@ -25,6 +25,9 @@ contract FileRegistry {
     /// @notice Asset id used by x402 to denote native HBAR. Prices are quoted in tinybars (1 HBAR = 1e8 tinybars).
     string public constant PAYMENT_ASSET = "0.0.0";
 
+    /// @notice Upper bound on `getFiles` page size to keep view-call gas and return data predictable.
+    uint256 public constant MAX_PAGE_SIZE = 50;
+
     /**
      * @notice A registered file and its access terms.
      * @param owner EVM address that registered the file and controls it.
@@ -239,9 +242,10 @@ contract FileRegistry {
 
     /**
      * @notice Paginated list of files for marketplace listing.
-     * @dev Returns at most `limit` files starting at `offset`. If `offset` is beyond the end, returns empty arrays.
+     * @dev Returns at most `limit` files starting at `offset`, capped at {@link MAX_PAGE_SIZE}. If `offset` is
+     *      beyond the end, returns empty arrays.
      * @param offset Index to start from.
-     * @param limit Maximum number of files to return.
+     * @param limit Maximum number of files to return (values above `MAX_PAGE_SIZE` are clamped).
      * @return ids The file ids in the returned page.
      * @return files The file metadata in the returned page.
      */
@@ -249,6 +253,10 @@ contract FileRegistry {
         uint256 offset,
         uint256 limit
     ) external view returns (bytes32[] memory ids, FileItem[] memory files) {
+        if (limit > MAX_PAGE_SIZE) {
+            limit = MAX_PAGE_SIZE;
+        }
+
         uint256 total = _fileIds.length;
         if (offset >= total || limit == 0) {
             return (new bytes32[](0), new FileItem[](0));
