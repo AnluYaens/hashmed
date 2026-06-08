@@ -19,6 +19,19 @@ It exposes the three endpoints an x402 resource server expects:
 The facilitator is **non-custodial**: it can only add its fee-payer signature to a transfer the
 buyer already authorized. It never holds files or the buyer's funds.
 
+### Why `FACILITATOR_PRIVATE_KEY` is required
+
+Hedera x402 uses native `TransferTransaction`s. The buyer’s wallet (e.g. HashPack) partially
+signs — authorizing movement of HBAR from buyer → seller. The transaction is also bound to a
+**fee payer** account (advertised via `/supported`). At settle time the facilitator must:
+
+1. Verify the buyer’s signature matches the payment requirements.
+2. Co-sign as that fee payer.
+3. Pay Hedera network fees and submit the transaction to consensus.
+
+That requires a funded ECDSA account and its private key on the facilitator process. The
+resource server (Next.js) only talks to this service over HTTP; it never sees the key.
+
 ## Running
 
 It is normally started via the repo-root `docker-compose.yml` (`yarn infra:up`). To run it
@@ -36,9 +49,10 @@ npm start
 | ------------------------ | ---------------- | -------------------------------------------------------- |
 | `PORT`                   | `4020`           | HTTP port                                                |
 | `X402_NETWORK`           | `hedera:testnet` | CAIP-2 network to settle on                              |
-| `FACILITATOR_ACCOUNT_ID` | _(required)_     | ECDSA fee-payer account id (funded with HBAR)            |
-| `FACILITATOR_PRIVATE_KEY`| _(required)_     | ECDSA private key for the fee-payer                      |
+| `FACILITATOR_ACCOUNT_ID` | _(required)_     | ECDSA fee-payer account id (funded with HBAR); advertised to clients |
+| `FACILITATOR_PRIVATE_KEY`| _(required)_     | ECDSA key for co-signing and submitting settled transfers |
 | `HEDERA_NODE_URL`        | _(optional)_     | Custom consensus node endpoint for private Hedera setups |
 
-The fee-payer account must be a real, funded **ECDSA** account: it sponsors gas for every
-settled payment.
+The fee-payer account must be a real, funded **ECDSA** account dedicated to the facilitator.
+It pays Hedera network fees for every settled payment. Use a separate account from your
+contract deployer or seller wallets.

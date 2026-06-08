@@ -1,12 +1,6 @@
-import { getMetadata } from "~~/utils/scaffold-hbar/getMetadata";
+import { notFound } from "next/navigation";
 
-export const metadata = getMetadata({
-  title: "Block Explorer",
-  description: "Block Explorer built on Hedera",
-});
-
-const BlockExplorerLayout = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>;
-};
-
-export default BlockExplorerLayout;
+/** Local block explorer is disabled in the x402 pay-per-use template. */
+export default function BlockExplorerLayout() {
+  notFound();
+}

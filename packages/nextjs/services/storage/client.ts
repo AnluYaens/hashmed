@@ -23,6 +23,9 @@ const S3_SECRET_KEY = process.env.S3_SECRET_KEY ?? process.env.MINIO_ROOT_PASSWO
 /** Bucket that holds every uploaded object. Created by the `minio-init` compose service. */
 export const S3_BUCKET = process.env.S3_BUCKET ?? "x402-files";
 
+/** MinIO requires path-style URLs; leave true unless using AWS virtual-hosted buckets. */
+const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE !== "false";
+
 /** Presigned upload URLs are short lived: just long enough to PUT one object. */
 export const UPLOAD_URL_TTL_SECONDS = 300;
 
@@ -38,7 +41,7 @@ export const DOWNLOAD_URL_TTL_SECONDS = 60;
 export const s3 = new S3Client({
   endpoint: S3_ENDPOINT,
   region: S3_REGION,
-  forcePathStyle: true,
+  forcePathStyle: S3_FORCE_PATH_STYLE,
   credentials: {
     accessKeyId: S3_ACCESS_KEY,
     secretAccessKey: S3_SECRET_KEY,

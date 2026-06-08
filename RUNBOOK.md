@@ -3,8 +3,9 @@
 A step-by-step guide to verifying each part of the template. Sections are added as each
 iteration lands. Run commands from the repository root unless stated otherwise.
 
-> Status: Iterations 1 (smart contract), 2 (local infra), and 3 (server: storage + x402 API
-> routes) are implemented and testable below. Iterations 4–5 will be appended as they are built.
+> Status: Iterations 1–4 (contract, infra, API routes, client + UI) are implemented and
+> testable below. See **Environment variables** and **Testnet caveats** for configuration
+> reference. Iteration 5 (CLI packaging) is still pending.
 
 ## Prerequisites
 
@@ -73,7 +74,15 @@ Two pieces run locally via Docker: a private **MinIO** bucket (object storage, n
 cp .env.example .env
 ```
 
-Edit `.env` and set the facilitator fee-payer (an ECDSA account funded with testnet HBAR):
+Edit `.env` and set the facilitator fee-payer credentials.
+
+**Why a private key here?** Private downloads settle as native Hedera `TransferTransaction`s.
+HashPack only **partially signs** — the buyer authorizes debiting their HBAR to the seller’s
+`payTo` account. Something still has to (a) co-sign as **fee payer**, (b) pay the Hedera network
+fee, and (c) **submit** the transaction. That is the facilitator’s job; it needs
+`FACILITATOR_ACCOUNT_ID` + `FACILITATOR_PRIVATE_KEY` server-side. The Next.js app never holds
+this key (it only calls `FACILITATOR_URL`). Use a **dedicated ECDSA** testnet account, funded
+with HBAR — not your contract deployer or seller wallet.
 
 ```dotenv
 FACILITATOR_ACCOUNT_ID=0.0.xxxxxx
@@ -189,8 +198,8 @@ curl -s -X PUT "$URL" -H 'content-type: text/plain' --data-binary @/tmp/hello.tx
 ```
 
 The object now exists in the private bucket. In a real flow the browser next calls
-`FileRegistry.registerFile(objectKey, payToAccountId, priceTinybar, isPublic, ...)`; you can do
-that from the **Debug Contracts** page once the UI lands, or via `cast`/Hardhat console.
+`FileRegistry.registerFile(objectKey, payToAccountId, priceTinybar, isPublic, ...)`; use the
+**Upload** page at `/files/upload` or register via `cast`/Hardhat console.
 
 ### 3.4 Public download returns `200` + a presigned URL
 
@@ -227,12 +236,11 @@ Sanity checks:
 
 > Completing the payment (signing, retrying with `PAYMENT-SIGNATURE`, then receiving a
 > `200` + `PAYMENT-RESPONSE` receipt and the presigned URL) is exercised end-to-end in
-> Iteration 4 with the burner-wallet client and the Node agent buyer script.
+> Iteration 4 with the HashPack browser client and the Node agent buyer script.
 
 ## Iteration 4 — Client + UI
 
-End-to-end pay-per-download on testnet via HashPack (WalletConnect), the burner wallet, or the
-Node agent script.
+End-to-end pay-per-download on testnet via HashPack (WalletConnect) or the Node agent script.
 
 ### Prerequisites
 
@@ -248,13 +256,7 @@ Node agent script.
 3. Click **Pay … HBAR & download** — HashPack prompts to sign the native HBAR transfer.
 4. After settlement you should get a presigned download URL and a tx receipt on the page.
 
-### B — Pay with Burner Wallet (local dev)
-
-1. Connect via RainbowKit → **Development → Burner Wallet**.
-2. Fund the burner’s Hedera account (faucet) if needed.
-3. Pay & download on a private file — signing uses the burner key in localStorage.
-
-### C — Pay from the Node agent
+### B — Pay from the Node agent
 
 ```bash
 RESOURCE_URL="http://localhost:3000/api/files/<fileId>/download" \
@@ -264,7 +266,70 @@ RESOURCE_URL="http://localhost:3000/api/files/<fileId>/download" \
 
 Expect `200` with a presigned URL and `PAYMENT-RESPONSE` settlement metadata.
 
+## Environment variables
+
+Three `.env` files configure local development. Copy each from its `.env.example` before
+running the stack.
+
+### Root `.env` (docker-compose / `yarn infra:up`)
+
+| Variable | Purpose |
+| --- | --- |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO credentials (default `minioadmin`) |
+| `S3_BUCKET` | Private bucket name (default `x402-files`) |
+| `FACILITATOR_PORT` | Host port for the facilitator (default `4020`) |
+| `X402_NETWORK` | CAIP-2 network the facilitator settles on (`hedera:testnet`) |
+| `FACILITATOR_ACCOUNT_ID` | ECDSA fee-payer account (`0.0.x`) advertised in `GET /supported` |
+| `FACILITATOR_PRIVATE_KEY` | ECDSA key used at `POST /settle` to co-sign, pay network fees, and submit the buyer’s partially signed transfer |
+| `HEDERA_NODE_URL` | Optional custom consensus node RPC |
+
+### `packages/nextjs/.env` (resource server + browser client)
+
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect project id (HashPack + RainbowKit) |
+| `HEDERA_RPC_URL` | RPC for on-chain `FileRegistry` reads |
+| `FILE_REGISTRY_ADDRESS` | Optional override when not in `deployedContracts.ts` |
+| `FACILITATOR_URL` | x402 facilitator base URL (default `http://localhost:4020`) |
+| `X402_NETWORK` | Server-side x402 network id |
+| `NEXT_PUBLIC_X402_NETWORK` | Browser x402 client network (must match `X402_NETWORK`) |
+| `S3_ENDPOINT` | MinIO API URL (default `http://localhost:9000`) |
+| `S3_REGION` | S3 region label (any value for MinIO) |
+| `S3_BUCKET` | Bucket name (must match root `.env`) |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | MinIO credentials |
+| `S3_FORCE_PATH_STYLE` | `true` for MinIO; `false` only for AWS virtual-hosted buckets |
+
+### `facilitator/.env` (standalone facilitator, optional)
+
+Used when running the facilitator outside Docker (`cd facilitator && npm start`). Same
+`FACILITATOR_ACCOUNT_ID`, `FACILITATOR_PRIVATE_KEY`, and `X402_NETWORK` as the root `.env`.
+
+### Optional facilitator fallback
+
+The default is the **self-hosted** facilitator from `docker-compose.yml`. To use an external
+hosted facilitator instead (e.g. Blocky402 testnet), set `FACILITATOR_URL` in
+`packages/nextjs/.env` — this is not required for local development.
+
+---
+
+## Testnet caveats
+
+- **ECDSA keys only** — x402 on Hedera requires ECDSA accounts. Create testnet accounts via the
+  [Hedera Portal](https://portal.hedera.com/) and fund them with HBAR.
+- **Buyer needs HBAR** — every private download is a fresh native HBAR transfer. No token
+  association is required for HBAR (`0.0.0`).
+- **Facilitator fee payer** — HashPack cannot complete x402 settlement alone. The facilitator’s
+  ECDSA account co-signs each transfer, pays Hedera network fees from its HBAR balance, and
+  broadcasts the transaction. Keep `FACILITATOR_PRIVATE_KEY` server-side only.
+- **Testnet settlement** — MinIO and the facilitator run locally, but Hedera payments hit
+  **testnet** (or mainnet if configured). The local Hedera fork is not used for x402.
+- **Docker required** — `yarn infra:up` starts MinIO and the facilitator containers.
+- **Pin `@x402/hedera`** — the package is young; expect API churn across releases.
+- **No on-chain privacy** — transfer amounts, accounts, and settlement txs are public on Hedera.
+
+---
+
 ## Iteration 5 — Packaging
 
-_To be added when implemented. Will cover: scaffolding the template via the CLI and the
-post-scaffold setup steps._
+_To be added when implemented. Will cover: `templates/x402-pay-per-use` branch, `template.json`
+entry, `create-scaffold-hbar` CLI registration, and post-scaffold setup steps._

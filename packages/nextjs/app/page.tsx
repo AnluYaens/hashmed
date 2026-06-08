@@ -5,7 +5,7 @@ import Link from "next/link";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 
@@ -79,14 +79,14 @@ const Home: NextPage = () => {
         </div>
 
         <div className="w-full max-w-4xl mx-auto px-5 mt-8 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
                 <ShoppingBagIcon className="h-7 w-7 text-white" />
               </div>
               <h3 className="font-bold text-lg mb-2">File Marketplace</h3>
               <p className="text-base-content/70 text-sm m-0 mb-6">
-                Upload files and sell access per download with x402 micropayments in HBAR.
+                Browse public and private files. Private downloads are gated behind x402 HBAR payments.
               </p>
               <Link href="/files" passHref className="btn btn-primary btn-sm">
                 Open Marketplace
@@ -95,27 +95,14 @@ const Home: NextPage = () => {
 
             <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
-                <BugAntIcon className="h-7 w-7 text-white" />
+                <ArrowUpTrayIcon className="h-7 w-7 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Debug Contracts</h3>
+              <h3 className="font-bold text-lg mb-2">Upload a file</h3>
               <p className="text-base-content/70 text-sm m-0 mb-6">
-                Tinker with your smart contracts and test interactions in real time.
+                Register files on-chain, set a price in HBAR, and store content in private MinIO storage.
               </p>
-              <Link href="/debug" passHref className="btn btn-primary btn-sm">
-                Open Debug
-              </Link>
-            </div>
-
-            <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center border border-base-300 relative">
-              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
-                <MagnifyingGlassIcon className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Block Explorer</h3>
-              <p className="text-base-content/70 text-sm m-0 mb-6">
-                Explore transactions, addresses, and contract activity on Hedera.
-              </p>
-              <Link href="/blockexplorer" passHref className="btn btn-primary btn-sm">
-                Open Block Explorer
+              <Link href="/files/upload" passHref className="btn btn-primary btn-sm">
+                Upload
               </Link>
             </div>
           </div>
@@ -126,16 +113,16 @@ const Home: NextPage = () => {
               <div className="flex items-start gap-3">
                 <span className="font-bold text-primary text-lg leading-none mt-0.5">1</span>
                 <div>
-                  <p className="m-0 font-medium">Edit the frontend</p>
-                  <code className="text-xs bg-base-200 px-2 py-1 rounded">packages/nextjs/app/page.tsx</code>
+                  <p className="m-0 font-medium">Start local infra</p>
+                  <code className="text-xs bg-base-200 px-2 py-1 rounded">yarn infra:up</code>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="font-bold text-primary text-lg leading-none mt-0.5">2</span>
                 <div>
-                  <p className="m-0 font-medium">Edit your contract</p>
+                  <p className="m-0 font-medium">Deploy FileRegistry</p>
                   <code className="text-xs bg-base-200 px-2 py-1 rounded">
-                    packages/hardhat/contracts/YourContract.sol
+                    yarn hardhat:deploy --network hederaTestnet
                   </code>
                 </div>
               </div>
@@ -149,15 +136,8 @@ const Home: NextPage = () => {
               <div className="flex items-start gap-3">
                 <span className="font-bold text-primary text-lg leading-none mt-0.5">4</span>
                 <div>
-                  <p className="m-0 font-medium">Deploy to Hedera</p>
-                  <div className="flex flex-col gap-1">
-                    <code className="text-xs bg-base-200 px-2 py-1 rounded">
-                      yarn hardhat:deploy --network hederaTestnet
-                    </code>
-                    <code className="text-xs bg-base-200 px-2 py-1 rounded">
-                      yarn foundry:deploy --network hedera_testnet
-                    </code>
-                  </div>
+                  <p className="m-0 font-medium">Run the app</p>
+                  <code className="text-xs bg-base-200 px-2 py-1 rounded">yarn next:dev</code>
                 </div>
               </div>
             </div>
