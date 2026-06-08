@@ -1,51 +1,111 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import type { NextPage } from "next";
+import { useReadContracts } from "wagmi";
 import { ArrowPathIcon, ArrowUpTrayIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
+import { HederaAddress } from "~~/components/scaffold-hbar";
+import { FILE_REGISTRY_ABI } from "~~/contracts/fileRegistryAbi";
+import { useDeployedContractInfo, useScaffoldEventHistory, useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import type { AllowedChainIds } from "~~/utils/scaffold-hbar";
 import { formatTinybar } from "~~/utils/x402";
 
-type PublicFile = {
-  fileId: string;
+type RegistryFile = {
+  fileId: `0x${string}`;
   name: string;
   mimeType: string;
   isPublic: boolean;
   priceTinybar: string;
-  owner: string;
+  owner: `0x${string}`;
   payToAccountId: string;
 };
 
-type ListResponse = { files?: PublicFile[]; total?: number; error?: string };
-
 const Marketplace: NextPage = () => {
-  const [files, setFiles] = useState<PublicFile[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [message, setMessage] = useState<string | null>(null);
+  const { targetNetwork } = useTargetNetwork();
+  const { data: deployedContract, isLoading: deployLoading } = useDeployedContractInfo({
+    contractName: "FileRegistry",
+    chainId: targetNetwork.id as AllowedChainIds,
+  });
 
-  const load = useCallback(async () => {
-    setStatus("loading");
-    setMessage(null);
-    try {
-      const res = await fetch("/api/files");
-      const data = (await res.json()) as ListResponse;
-      if (!res.ok) {
-        setMessage(data.error ?? "Failed to load files");
-        setStatus("error");
-        setFiles([]);
-        return;
-      }
-      setFiles(data.files ?? []);
-      setStatus("ready");
-    } catch {
-      setMessage("Could not reach the server");
-      setStatus("error");
+  const {
+    data: registrationEvents,
+    status: eventsStatus,
+    error: eventsError,
+    isLoading: eventsLoading,
+    refetch: refetchEvents,
+  } = useScaffoldEventHistory({
+    contractName: "FileRegistry",
+    eventName: "FileRegistered",
+    watch: true,
+  });
+
+  const fileIds = useMemo(() => {
+    const seen = new Set<string>();
+    const ids: `0x${string}`[] = [];
+    for (const event of registrationEvents ?? []) {
+      const fileId = event.args?.fileId as `0x${string}` | undefined;
+      if (!fileId || seen.has(fileId)) continue;
+      seen.add(fileId);
+      ids.push(fileId);
     }
-  }, []);
+    return ids;
+  }, [registrationEvents]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const {
+    data: fileReads,
+    isLoading: readsLoading,
+    refetch: refetchFiles,
+  } = useReadContracts({
+    contracts: fileIds.map(fileId => ({
+      chainId: targetNetwork.id,
+      address: deployedContract?.address,
+      abi: FILE_REGISTRY_ABI,
+      functionName: "getFile" as const,
+      args: [fileId] as const,
+    })),
+    query: {
+      enabled: Boolean(deployedContract?.address) && fileIds.length > 0,
+    },
+  });
+
+  const files = useMemo((): RegistryFile[] => {
+    if (!fileReads) return [];
+    return fileIds
+      .map((fileId, index) => {
+        const read = fileReads[index];
+        if (!read || read.status !== "success" || !read.result) return null;
+        const item = read.result as {
+          owner: `0x${string}`;
+          payToAccountId: string;
+          priceTinybar: bigint;
+          isPublic: boolean;
+          name: string;
+          mimeType: string;
+          exists: boolean;
+        };
+        if (!item.exists) return null;
+        return {
+          fileId,
+          name: item.name,
+          mimeType: item.mimeType,
+          isPublic: item.isPublic,
+          priceTinybar: item.priceTinybar.toString(),
+          owner: item.owner,
+          payToAccountId: item.payToAccountId,
+        };
+      })
+      .filter((file): file is RegistryFile => file !== null);
+  }, [fileIds, fileReads]);
+
+  const refresh = () => {
+    void refetchEvents();
+    void refetchFiles();
+  };
+
+  const registryMissing = !deployLoading && !deployedContract?.address;
+  const isLoading = deployLoading || eventsLoading || (fileIds.length > 0 && readsLoading);
+  const loadFailed = eventsStatus === "error";
 
   return (
     <div className="flex flex-col grow w-full max-w-5xl mx-auto px-5 py-10">
@@ -57,7 +117,7 @@ const Marketplace: NextPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn btn-ghost btn-sm" onClick={load} aria-label="Refresh">
+          <button className="btn btn-ghost btn-sm" onClick={refresh} aria-label="Refresh" disabled={isLoading}>
             <ArrowPathIcon className="h-4 w-4" />
           </button>
           <Link href="/files/upload" className="btn btn-primary btn-sm gap-2">
@@ -66,7 +126,16 @@ const Marketplace: NextPage = () => {
         </div>
       </div>
 
-      {status === "loading" && (
+      {registryMissing && (
+        <div className="alert alert-warning">
+          <span>
+            FileRegistry is not deployed on {targetNetwork.name}. Deploy with{" "}
+            <code className="text-xs">yarn hardhat:deploy --network hederaTestnet</code> first.
+          </span>
+        </div>
+      )}
+
+      {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-40 rounded-2xl bg-base-200 animate-pulse" />
@@ -74,13 +143,13 @@ const Marketplace: NextPage = () => {
         </div>
       )}
 
-      {status === "error" && (
+      {!isLoading && loadFailed && (
         <div className="alert alert-warning">
-          <span>{message}</span>
+          <span>{eventsError?.message ?? "Failed to load FileRegistered events from the chain"}</span>
         </div>
       )}
 
-      {status === "ready" && files.length === 0 && (
+      {!isLoading && !loadFailed && !registryMissing && files.length === 0 && (
         <div className="bg-base-100 border border-base-300 rounded-2xl p-12 text-center">
           <p className="text-base-content/70 m-0 mb-4">No files registered yet.</p>
           <Link href="/files/upload" className="btn btn-primary btn-sm">
@@ -89,7 +158,7 @@ const Marketplace: NextPage = () => {
         </div>
       )}
 
-      {status === "ready" && files.length > 0 && (
+      {!isLoading && !loadFailed && files.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {files.map(file => (
             <Link
@@ -110,6 +179,10 @@ const Marketplace: NextPage = () => {
                 )}
               </div>
               <span className="text-xs text-base-content/50 break-all">{file.mimeType}</span>
+              <div className="text-xs text-base-content/60">
+                <span className="text-base-content/50">Owner </span>
+                <HederaAddress address={file.owner} chain={targetNetwork} />
+              </div>
               <div className="mt-auto pt-2 border-t border-base-200">
                 {file.isPublic ? (
                   <span className="text-sm font-medium text-success">Free download</span>
