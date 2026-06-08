@@ -95,6 +95,9 @@ contract FileRegistry {
     /// @notice Thrown when a required string argument is empty.
     error EmptyValue(string field);
 
+    /// @notice Thrown when `contentHash` is zero (a SHA-256 digest is required).
+    error InvalidContentHash();
+
     /// @dev Restricts a function to the owner of `fileId`.
     modifier onlyFileOwner(bytes32 fileId) {
         FileItem storage file = _files[fileId];
@@ -111,9 +114,9 @@ contract FileRegistry {
      * @param payToAccountId Hedera account id that receives payments for this file (must be non-empty).
      * @param priceTinybar Price per download in tinybars (ignored while the file is public).
      * @param isPublic Whether the file is freely downloadable.
-     * @param contentHash SHA-256 of the file contents.
+     * @param contentHash SHA-256 of the file contents (must be non-zero).
      * @param name Human-readable file name.
-     * @param mimeType MIME type of the file.
+     * @param mimeType MIME type of the file (must be non-empty).
      * @return fileId The id assigned to the newly registered file.
      */
     function registerFile(
@@ -127,6 +130,8 @@ contract FileRegistry {
     ) external returns (bytes32 fileId) {
         if (bytes(objectKey).length == 0) revert EmptyValue("objectKey");
         if (bytes(payToAccountId).length == 0) revert EmptyValue("payToAccountId");
+        if (contentHash == bytes32(0)) revert InvalidContentHash();
+        if (bytes(mimeType).length == 0) revert EmptyValue("mimeType");
 
         fileId = computeFileId(msg.sender, objectKey);
         if (_files[fileId].exists) revert FileAlreadyRegistered(fileId);

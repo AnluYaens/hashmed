@@ -115,6 +115,21 @@ describe("FileRegistry", function () {
         .withArgs("payToAccountId");
     });
 
+    it("reverts when the content hash is zero", async function () {
+      const { registry } = await deployFixture();
+      await expect(register(registry, { contentHash: ethers.ZeroHash })).to.be.revertedWithCustomError(
+        registry,
+        "InvalidContentHash",
+      );
+    });
+
+    it("reverts when the mime type is empty", async function () {
+      const { registry } = await deployFixture();
+      await expect(register(registry, { mimeType: "" }))
+        .to.be.revertedWithCustomError(registry, "EmptyValue")
+        .withArgs("mimeType");
+    });
+
     it("reverts when the same owner registers the same object key twice", async function () {
       const { registry, owner } = await deployFixture();
       await register(registry);
