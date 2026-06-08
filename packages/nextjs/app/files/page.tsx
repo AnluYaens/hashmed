@@ -161,36 +161,40 @@ const Marketplace: NextPage = () => {
       {!isLoading && !loadFailed && files.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {files.map(file => (
-            <Link
+            <article
               key={file.fileId}
-              href={`/files/${file.fileId}`}
-              className="bg-base-100 border border-base-300 rounded-2xl p-5 hover:shadow-lg hover:border-primary/40 transition-all flex flex-col gap-3"
+              className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3"
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-semibold break-all line-clamp-2">{file.name}</span>
-                {file.isPublic ? (
-                  <span className="badge badge-success badge-sm gap-1 shrink-0">
-                    <LockOpenIcon className="h-3 w-3" /> Public
-                  </span>
-                ) : (
-                  <span className="badge badge-secondary badge-sm gap-1 shrink-0">
-                    <LockClosedIcon className="h-3 w-3" /> Private
-                  </span>
-                )}
-              </div>
-              <span className="text-xs text-base-content/50 break-all">{file.mimeType}</span>
-              <div className="text-xs text-base-content/60">
+              <Link
+                href={`/files/${file.fileId}`}
+                className="flex flex-col gap-3 flex-1 hover:opacity-90 transition-opacity"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-semibold break-all line-clamp-2">{file.name}</span>
+                  {file.isPublic ? (
+                    <span className="badge badge-success badge-sm gap-1 shrink-0">
+                      <LockOpenIcon className="h-3 w-3" /> Public
+                    </span>
+                  ) : (
+                    <span className="badge badge-secondary badge-sm gap-1 shrink-0">
+                      <LockClosedIcon className="h-3 w-3" /> Private
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-base-content/50 break-all">{file.mimeType}</span>
+                <div className="mt-auto pt-2 border-t border-base-200">
+                  {file.isPublic ? (
+                    <span className="text-sm font-medium text-success">Free download</span>
+                  ) : (
+                    <span className="text-sm font-medium">{formatTinybar(file.priceTinybar)} HBAR / download</span>
+                  )}
+                </div>
+              </Link>
+              <div className="text-xs text-base-content/60 border-t border-base-200 pt-2">
                 <span className="text-base-content/50">Owner </span>
-                <HederaAddress address={file.owner} chain={targetNetwork} />
+                <HederaAddress address={file.owner} chain={targetNetwork} disableAddressLink />
               </div>
-              <div className="mt-auto pt-2 border-t border-base-200">
-                {file.isPublic ? (
-                  <span className="text-sm font-medium text-success">Free download</span>
-                ) : (
-                  <span className="text-sm font-medium">{formatTinybar(file.priceTinybar)} HBAR / download</span>
-                )}
-              </div>
-            </Link>
+            </article>
           ))}
         </div>
       )}
