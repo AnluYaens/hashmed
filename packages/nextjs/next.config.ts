@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
       ...(config.resolve.alias ?? {}),
       porto: false,
       "porto/internal": false,
+      "@metamask/connect-evm": path.join(__dirname, "stubs/metamask-connect-evm.js"),
     };
 
     config.resolve.fallback = {
@@ -52,6 +53,11 @@ const nextConfig: NextConfig = {
 
     config.ignoreWarnings = [
       ...(config.ignoreWarnings ?? []),
+      // viem re-exports Tempo chain defs; ox uses dynamic require() internally.
+      {
+        module: /node_modules\/(ox|viem)\/_esm\/tempo/,
+        message: /Critical dependency/,
+      },
       {
         module: /node_modules\/@reown\/appkit\/node_modules\/ox/,
         message: /Critical dependency/,
