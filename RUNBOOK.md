@@ -251,7 +251,7 @@ End-to-end pay-per-download on testnet via HashPack (WalletConnect) or the Node 
 ### A — Pay with HashPack (browser)
 
 1. Open a **private** file at `/files/<id>`.
-2. Click **Connect HashPack to pay** and approve the WalletConnect session in HashPack.
+2. Click **Connect HashPack** in the header and approve the WalletConnect session (EVM + native Hedera).
 3. Click **Pay … HBAR & download** — HashPack prompts to sign the native HBAR transfer.
 4. After settlement you should get a presigned download URL and a tx receipt on the page.
 
@@ -286,7 +286,7 @@ running the stack.
 
 | Variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect project id (HashPack + RainbowKit) |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect project id (HashPack via Reown AppKit) |
 | `HEDERA_RPC_URL` | RPC for on-chain `FileRegistry` reads |
 | `FILE_REGISTRY_ADDRESS` | Optional override when not in `deployedContracts.ts` |
 | `FACILITATOR_URL` | x402 facilitator base URL (default `http://localhost:4020`) |

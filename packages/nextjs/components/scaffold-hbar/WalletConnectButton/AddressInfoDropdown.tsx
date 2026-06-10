@@ -1,8 +1,9 @@
+"use client";
+
 import { useRef, useState } from "react";
 import { NetworkOptions } from "./NetworkOptions";
-import { getAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import { Address } from "viem";
-import { useAccount, useDisconnect } from "wagmi";
 import {
   ArrowLeftStartOnRectangleIcon,
   ArrowTopRightOnSquareIcon,
@@ -10,10 +11,10 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   DocumentDuplicateIcon,
-  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { BlockieAvatar } from "~~/components/scaffold-hbar";
 import { useCopyToClipboard, useOutsideClick } from "~~/hooks/scaffold-hbar";
+import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getTargetNetworks } from "~~/utils/scaffold-hbar";
 import { isENS } from "~~/utils/scaffold-hbar/common";
 
@@ -26,18 +27,14 @@ type AddressInfoDropdownProps = {
   ensAvatar?: string;
 };
 
-const BURNER_WALLET_CONNECTOR_ID = "burnerWallet";
-
 export const AddressInfoDropdown = ({
   address,
   ensAvatar,
   displayName,
   blockExplorerAddressLink,
 }: AddressInfoDropdownProps) => {
-  const { disconnect } = useDisconnect();
-  const { connector } = useAccount();
-  const isBurnerWallet = connector?.id === BURNER_WALLET_CONNECTOR_ID;
-  const checkSumAddress = getAddress(address);
+  const { disconnectWallet } = useHederaWalletConnect();
+  const checkSumAddress = isAddress(address) ? getAddress(address) : address;
 
   const { copyToClipboard: copyAddressToClipboard, isCopiedToClipboard: isAddressCopiedToClipboard } =
     useCopyToClipboard();
@@ -107,27 +104,11 @@ export const AddressInfoDropdown = ({
               </button>
             </li>
           ) : null}
-          {isBurnerWallet && (
-            <>
-              <li className={selectingNetwork ? "hidden" : ""}>
-                <label htmlFor="reveal-burner-pk-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3">
-                  <KeyIcon className="h-6 w-4 ml-2 sm:ml-0" />
-                  <span className="whitespace-nowrap">Reveal Private Key</span>
-                </label>
-              </li>
-              <li className={selectingNetwork ? "hidden" : ""}>
-                <label htmlFor="set-burner-pk-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3">
-                  <KeyIcon className="h-6 w-4 ml-2 sm:ml-0" />
-                  <span className="whitespace-nowrap">Set Private Key</span>
-                </label>
-              </li>
-            </>
-          )}
           <li className={selectingNetwork ? "hidden" : ""}>
             <button
               className="menu-item text-error h-8 btn-sm rounded-xl! flex gap-3 py-3"
               type="button"
-              onClick={() => disconnect()}
+              onClick={() => void disconnectWallet()}
             >
               <ArrowLeftStartOnRectangleIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>Disconnect</span>
             </button>

@@ -1,24 +1,26 @@
-import type { DAppConnector } from "@hashgraph/hedera-wallet-connect/dist/lib/dapp";
+import type { HederaProvider } from "@hashgraph/hedera-wallet-connect";
 import type { PaymentRequirements } from "@x402/core/types";
 import type { ClientHederaSigner, HederaClientSignerConfig } from "@x402/hedera";
+import { X402_CLIENT_NETWORK } from "~~/services/x402/client";
 
 /**
- * x402 client signer that partially signs Hedera transfers via WalletConnect
+ * x402 client signer that partially signs Hedera transfers via Hedera WalletConnect
  * (`hedera_signTransaction`), e.g. HashPack.
  */
-export function createWalletHederaSigner(
+export function createHederaProviderSigner(
   accountId: string,
-  connector: DAppConnector,
+  provider: HederaProvider,
   config: HederaClientSignerConfig = {},
 ): ClientHederaSigner {
-  const configuredNetwork = config.network ?? "hedera:testnet";
+  const configuredNetwork = config.network ?? X402_CLIENT_NETWORK;
 
   return {
     accountId,
     createPartiallySignedTransferTransaction: async (requirements: PaymentRequirements) => {
-      const [{ AccountId, Hbar, TokenId, Transaction, TransactionId, TransferTransaction }, hedera] = await Promise.all(
-        [import("@hiero-ledger/sdk"), import("@x402/hedera")],
-      );
+      const [{ AccountId, Hbar, TokenId, TransactionId, TransferTransaction }, hedera] = await Promise.all([
+        import("@hiero-ledger/sdk"),
+        import("@x402/hedera"),
+      ]);
 
       if (!hedera.isSupportedHederaNetwork(requirements.network)) {
         throw new Error(`Unsupported Hedera network: ${requirements.network}`);
@@ -48,20 +50,17 @@ export function createWalletHederaSigner(
 
       tx.setTransactionId(TransactionId.generate(AccountId.fromString(feePayer)));
 
-      const client = hedera.createHederaClient(configuredNetwork, config.nodeUrl);
-      try {
-        tx.freezeWith(client);
-        const signed = await connector.signTransaction({
-          signerAccountId: accountId,
-          transactionBody: tx,
-        });
-        if (!(signed instanceof Transaction)) {
-          throw new Error("Wallet did not return a signed transaction");
-        }
-        return Buffer.from(signed.toBytes()).toString("base64");
-      } finally {
-        client.close();
-      }
+      // Use HederaProvider helper so the SDK Transaction is serialized to the
+      // base64 transactionBody HashPack expects (not a raw SDK object over WC).
+      const signed = await provider.hedera_signTransaction({
+        signerAccountId: `${requirements.network}:${accountId}`,
+        transactionBody: tx,
+      });
+
+      return Buffer.from(signed.toBytes()).toString("base64");
     },
   };
 }
+
+/** @deprecated use createHederaProviderSigner */
+export const createUniversalProviderHederaSigner = createHederaProviderSigner;

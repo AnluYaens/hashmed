@@ -1,6 +1,6 @@
 # x402 Pay-Per-Use Template (Hedera)
 
-A [Scaffold-HBAR](https://github.com/buidler-labs/scaffold-hbar) template for a **pay-per-download file marketplace** on Hedera using [x402](https://x402.org/).
+A [Scaffold-HBAR](https://github.com/hedera-dev/scaffold-hbar) template for a **pay-per-download file marketplace** on Hedera using [x402](https://x402.org/).
 
 ```bash
 npx create-scaffold-hbar@latest --template x402-pay-per-use
@@ -52,7 +52,7 @@ yarn infra:up        # MinIO :9000 / :9001, facilitator :4020
 yarn next:dev        # http://localhost:3000
 ```
 
-7. Open **Files** → upload a file, set a price, then pay with **HashPack** on the file detail page.
+7. Connect **HashPack** in the header, upload a file, set a price, then pay for a private download from the file detail page.
 
 Step-by-step verification (curl, facilitator health checks, CLI buyer script) is in [`RUNBOOK.md`](RUNBOOK.md).
 
@@ -61,7 +61,9 @@ Step-by-step verification (curl, facilitator health checks, CLI buyer script) is
 1. **Upload** — the browser gets a presigned MinIO PUT URL from `POST /api/files/upload`, then registers metadata on `FileRegistry`.
 2. **List / browse** — the marketplace reads `FileRegistered` events and on-chain file metadata.
 3. **Download (public)** — `GET /api/files/:id/download` returns a presigned GET URL with no payment.
-4. **Download (private)** — the same route returns `402 Payment Required`; the x402 client builds a native Hedera `TransferTransaction`, HashPack **partially signs** it (authorizing the HBAR debit), the facilitator **co-signs as fee payer**, submits the transaction to Hedera, and the server responds with a presigned URL plus a `PAYMENT-RESPONSE` receipt.
+4. **Download (private)** — the same route returns `402 Payment Required`; the x402 client builds a native Hedera `TransferTransaction`, your connected **HashPack** session **partially signs** it (authorizing the HBAR debit), the facilitator **co-signs as fee payer**, submits the transaction to Hedera, and the server responds with a presigned URL plus a `PAYMENT-RESPONSE` receipt.
+
+One **HashPack** WalletConnect session (via Reown AppKit) covers both EVM contract calls (upload, register) and native x402 payments — no second wallet connection.
 
 ## Why the facilitator needs a private key
 
@@ -110,6 +112,7 @@ Verified contracts appear on [Hashscan (testnet)](https://hashscan.io/testnet).
 
 ## Caveats
 
+- **HashPack only** — the demo uses Reown AppKit with HashPack (EVM + native Hedera namespaces). MetaMask and the dev burner wallet are not supported in this template.
 - **ECDSA accounts** — buyers and the facilitator fee payer must use ECDSA keys (not ED25519).
 - **HBAR balance** — buyers need testnet HBAR for each private download; the facilitator account needs HBAR to sponsor network fees.
 - **Testnet settlement** — MinIO and the facilitator run locally, but payments settle on Hedera **testnet** (or mainnet if you change `X402_NETWORK`). The local Hedera fork is not used for x402.

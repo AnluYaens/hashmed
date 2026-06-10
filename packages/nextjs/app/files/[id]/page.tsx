@@ -15,8 +15,8 @@ import {
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { FILE_REGISTRY_ABI, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { useHederaWalletConnect } from "~~/hooks/x402/useHederaWalletConnect";
-import { getBurnerPrivateKey, payAndGetDownloadUrl } from "~~/services/x402/client";
+import { payAndGetDownloadUrl } from "~~/services/x402/client";
+import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { formatTinybar, hbarToTinybar } from "~~/utils/x402";
 
@@ -33,20 +33,16 @@ type PublicFile = {
 
 const FileDetail: NextPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { address, chain, connector } = useAccount();
+  const { address, chain } = useAccount();
+  const { accountId: hederaAccountId, isConnected } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
-  const BURNER_WALLET_CONNECTOR_ID = "burnerWallet";
-  const isBurnerWallet = connector?.id === BURNER_WALLET_CONNECTOR_ID;
-  const hashpack = useHederaWalletConnect();
-  const canPayWithHashpack = hashpack.isConnected;
-  const canPayWithBurner = isBurnerWallet && !!getBurnerPrivateKey();
-  const canPay = canPayWithHashpack || canPayWithBurner;
+  const canPay = isConnected && !!hederaAccountId;
 
   const [file, setFile] = useState<PublicFile | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [statusLoad, setStatusLoad] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
@@ -61,20 +57,20 @@ const FileDetail: NextPage = () => {
 
   const load = useCallback(async () => {
     if (!id) return;
-    setStatus("loading");
+    setStatusLoad("loading");
     try {
       const res = await fetch(`/api/files/${id}`);
       const data = (await res.json()) as { file?: PublicFile; error?: string };
       if (!res.ok || !data.file) {
         setMessage(data.error ?? "File not found");
-        setStatus("error");
+        setStatusLoad("error");
         return;
       }
       setFile(data.file);
-      setStatus("ready");
+      setStatusLoad("ready");
     } catch {
       setMessage("Could not reach the server");
-      setStatus("error");
+      setStatusLoad("error");
     }
   }, [id]);
 
@@ -105,8 +101,8 @@ const FileDetail: NextPage = () => {
   };
 
   const handlePaidDownload = async () => {
-    if (!canPay) {
-      notification.error("Connect HashPack or switch to the Burner Wallet to pay in-browser.");
+    if (!canPay || !hederaAccountId) {
+      notification.error("Connect HashPack with an ECDSA account to pay in-browser.");
       return;
     }
     setDownloading(true);
@@ -115,7 +111,7 @@ const FileDetail: NextPage = () => {
     try {
       const result = await payAndGetDownloadUrl({
         resourceUrl,
-        signer: canPayWithHashpack ? "hashpack" : "burner",
+        hederaAccountId,
       });
       notification.remove(toastId);
       notification.success("Payment settled — download ready");
@@ -129,7 +125,7 @@ const FileDetail: NextPage = () => {
     }
   };
 
-  if (status === "loading") {
+  if (statusLoad === "loading") {
     return (
       <div className="w-full max-w-3xl mx-auto px-5 py-10">
         <div className="h-48 rounded-2xl bg-base-200 animate-pulse" />
@@ -137,7 +133,7 @@ const FileDetail: NextPage = () => {
     );
   }
 
-  if (status === "error" || !file) {
+  if (statusLoad === "error" || !file) {
     return (
       <div className="w-full max-w-3xl mx-auto px-5 py-10">
         <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
@@ -196,32 +192,6 @@ const FileDetail: NextPage = () => {
             </button>
           ) : (
             <div className="flex flex-col gap-3">
-              {!canPayWithHashpack ? (
-                <button
-                  className="btn btn-outline w-full"
-                  disabled={hashpack.connecting || downloading}
-                  onClick={() => hashpack.connect().catch(e => notification.error(getParsedError(e)))}
-                >
-                  {hashpack.connecting ? (
-                    <span className="loading loading-spinner loading-sm" />
-                  ) : (
-                    "Connect HashPack to pay"
-                  )}
-                </button>
-              ) : (
-                <div className="flex items-center justify-between gap-2 text-xs text-base-content/60 px-1">
-                  <span>
-                    Paying as <span className="font-mono">{hashpack.accountIds[0]}</span>
-                  </span>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    disabled={hashpack.connecting || downloading}
-                    onClick={() => hashpack.disconnect().catch(e => notification.error(getParsedError(e)))}
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              )}
               <button
                 className="btn btn-primary w-full gap-2"
                 disabled={downloading || !canPay || onWrongNetwork}
@@ -234,10 +204,14 @@ const FileDetail: NextPage = () => {
                 )}
                 Pay {formatTinybar(file.priceTinybar)} HBAR & download
               </button>
-              {!canPay && (
+              {!isConnected && (
                 <span className="text-xs text-center text-base-content/50">
-                  Connect HashPack above, or use the Burner Wallet (<strong>Development → Burner Wallet</strong>) for
-                  local dev. MetaMask cannot sign native Hedera x402 transfers.
+                  Connect HashPack in the header to pay for this download.
+                </span>
+              )}
+              {isConnected && !hederaAccountId && (
+                <span className="text-xs text-center text-warning">
+                  HashPack did not provide a Hedera account ID. Make sure your wallet supports the Hedera namespace.
                 </span>
               )}
               {onWrongNetwork && (

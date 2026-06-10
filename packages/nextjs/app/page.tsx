@@ -71,7 +71,7 @@ const Home: NextPage = () => {
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <p className="font-semibold text-sm text-base-content/60 uppercase tracking-wider m-0">
-                  Connect your wallet to get started
+                  Connect HashPack to get started
                 </p>
               </div>
             )}
