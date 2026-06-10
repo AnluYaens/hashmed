@@ -3,10 +3,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { Toaster } from "react-hot-toast";
+import type { Config } from "wagmi";
 import { WagmiProvider } from "wagmi";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { LocalChainErrorBanner } from "~~/components/LocalChainErrorBanner";
+import { WagmiSync } from "~~/components/WagmiSync";
 import { HederaWalletConnectProvider } from "~~/services/web3/hederaWalletConnect";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
@@ -34,9 +36,10 @@ export const queryClient = new QueryClient({
 
 export const ScaffoldHbarAppWithProviders = ({ children }: { children: React.ReactNode }) => {
   return (
-    <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+    <WagmiProvider config={wagmiConfig as Config} reconnectOnMount={false}>
       <QueryClientProvider client={queryClient}>
         <HederaWalletConnectProvider>
+          <WagmiSync />
           <ProgressBar height="3px" color="#2299dd" />
           <ScaffoldHbarApp>{children}</ScaffoldHbarApp>
         </HederaWalletConnectProvider>

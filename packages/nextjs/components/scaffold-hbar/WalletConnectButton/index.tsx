@@ -6,7 +6,7 @@ import { useAppKit } from "@reown/appkit/react";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 
-/** HashPack connect button via Reown AppKit (native Hedera namespace). */
+/** HashPack connect via Reown AppKit (native Hedera + EVM namespaces). */
 export const WalletConnectButton = () => {
   const { open } = useAppKit();
   const { accountId, isConnected, isBusy, disconnectWallet } = useHederaWalletConnect();

@@ -4,7 +4,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { NextPage } from "next";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import type { Address } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -16,6 +17,7 @@ import { HederaAddress } from "~~/components/scaffold-hbar";
 import { FILE_REGISTRY_ABI, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { payAndGetDownloadUrl } from "~~/services/x402/client";
+import { writeContractViaProvider } from "~~/services/web3/evmContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { formatTinybar, hbarToTinybar } from "~~/utils/x402";
@@ -34,12 +36,18 @@ type PublicFile = {
 const FileDetail: NextPage = () => {
   const { id } = useParams<{ id: string }>();
   const { address, chain } = useAccount();
-  const { accountId: hederaAccountId, isConnected } = useHederaWalletConnect();
+  const {
+    accountId: hederaAccountId,
+    evmAddress,
+    hasHederaSession,
+    isConnected,
+    provider,
+  } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
   const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
+  const signerAddress = (address ?? evmAddress) as Address | undefined;
 
-  const canPay = isConnected && !!hederaAccountId;
+  const canPay = isConnected && hasHederaSession && !!hederaAccountId;
 
   const [file, setFile] = useState<PublicFile | null>(null);
   const [statusLoad, setStatusLoad] = useState<"loading" | "ready" | "error">("loading");
@@ -209,7 +217,12 @@ const FileDetail: NextPage = () => {
                   Connect HashPack in the header to pay for this download.
                 </span>
               )}
-              {isConnected && !hederaAccountId && (
+              {isConnected && !hasHederaSession && (
+                <span className="text-xs text-center text-warning">
+                  Reconnect HashPack to approve native Hedera signing for payments.
+                </span>
+              )}
+              {isConnected && hasHederaSession && !hederaAccountId && (
                 <span className="text-xs text-center text-warning">
                   HashPack did not provide a Hedera account ID. Make sure your wallet supports the Hedera namespace.
                 </span>
@@ -231,12 +244,20 @@ const FileDetail: NextPage = () => {
           file={file}
           onUpdated={load}
           write={async (functionName, args) => {
-            const hash = await writeContractAsync({
+            if (!provider || !signerAddress || !registryAddress) {
+              throw new Error("Connect HashPack to manage this file on-chain.");
+            }
+            const hash = await writeContractViaProvider({
+              provider,
+              contractAddress: registryAddress,
+              evmAddress: signerAddress,
+              chainId: targetNetwork.id,
               abi: FILE_REGISTRY_ABI,
-              address: registryAddress,
               functionName,
-              args,
-            } as never);
+              fnArgs: args,
+              wagmiAddress: address,
+              wagmiChainId: chain?.id,
+            });
             await publicClient?.waitForTransactionReceipt({ hash });
           }}
         />

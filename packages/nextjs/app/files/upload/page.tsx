@@ -3,11 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NextPage } from "next";
-import { type Hex, toHex } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { type Hex, type Address, toHex } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
 import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import { FILE_REGISTRY_ABI, computeFileId, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
 import { useHederaAccountId, useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import { writeContractViaProvider } from "~~/services/web3/evmContractWrite";
+import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { hbarToTinybar } from "~~/utils/x402";
 
@@ -22,10 +24,18 @@ async function sha256Hex(file: File): Promise<Hex> {
 const UploadFile: NextPage = () => {
   const router = useRouter();
   const { address, chain } = useAccount();
+  const {
+    isConnected: hashpackConnected,
+    accountId: connectedAccountId,
+    evmAddress: sessionEvmAddress,
+    hasEvmSession,
+    provider,
+  } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
   const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
-  const { accountId: ownerAccountId } = useHederaAccountId(address, targetNetwork.id);
+  const signerAddress = (address ?? sessionEvmAddress) as Address | undefined;
+  const { accountId: resolvedOwnerAccountId } = useHederaAccountId(signerAddress, targetNetwork.id);
+  const ownerAccountId = connectedAccountId ?? resolvedOwnerAccountId;
 
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -50,7 +60,14 @@ const UploadFile: NextPage = () => {
   }, [isPublic, priceHbar]);
 
   const canSubmit =
-    !!file && !!name.trim() && !!address && !!registryAddress && !onWrongNetwork && !priceError && !busy;
+    !!file &&
+    !!name.trim() &&
+    !!signerAddress &&
+    !!registryAddress &&
+    !onWrongNetwork &&
+    !priceError &&
+    !busy &&
+    hasEvmSession;
 
   const handleFile = (next: File | null) => {
     setFile(next);
@@ -58,7 +75,7 @@ const UploadFile: NextPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!file || !address || !registryAddress || !publicClient) return;
+    if (!file || !signerAddress || !registryAddress || !publicClient || !provider) return;
 
     const payToTrimmed = effectivePayTo.trim();
     if (!HEDERA_ID_RE.test(payToTrimmed)) {
@@ -108,25 +125,32 @@ const UploadFile: NextPage = () => {
       // 3) Register the file on-chain.
       const registerToastId = notification.loading("Confirm registration in your wallet…");
       const objectKey = uploadData.objectKey;
-      const hash = await writeContractAsync({
+      const registerArgs = [
+        objectKey,
+        payToTrimmed,
+        priceTinybar,
+        isPublic,
+        contentHash,
+        name.trim(),
+        file.type || "application/octet-stream",
+      ] as const;
+
+      const hash = await writeContractViaProvider({
+        provider,
+        contractAddress: registryAddress,
+        evmAddress: signerAddress,
+        chainId: targetNetwork.id,
         abi: FILE_REGISTRY_ABI,
-        address: registryAddress,
         functionName: "registerFile",
-        args: [
-          objectKey,
-          payToTrimmed,
-          priceTinybar,
-          isPublic,
-          contentHash,
-          name.trim(),
-          file.type || "application/octet-stream",
-        ],
+        fnArgs: registerArgs,
+        wagmiAddress: address,
+        wagmiChainId: chain?.id,
       });
       await publicClient.waitForTransactionReceipt({ hash });
       notification.remove(registerToastId);
       notification.success("File registered!");
 
-      const fileId = computeFileId(address, objectKey);
+      const fileId = computeFileId(signerAddress, objectKey);
       router.push(`/files/${fileId}`);
     } catch (e) {
       notification.remove(toastId);
@@ -231,8 +255,13 @@ const UploadFile: NextPage = () => {
           {busy ? <span className="loading loading-spinner loading-sm" /> : <ArrowUpTrayIcon className="h-4 w-4" />}
           {busy ? "Working…" : "Upload & register"}
         </button>
-        {!address && (
-          <span className="text-xs text-center text-base-content/50">Connect your wallet to register files.</span>
+        {!hashpackConnected && (
+          <span className="text-xs text-center text-base-content/50">Connect HashPack in the header to register files.</span>
+        )}
+        {hashpackConnected && !hasEvmSession && (
+          <span className="text-xs text-center text-warning">
+            Your wallet session is missing EVM permissions. Disconnect, then connect again to upload files.
+          </span>
         )}
       </div>
     </div>

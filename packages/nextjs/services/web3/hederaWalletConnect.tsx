@@ -1,14 +1,32 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { clearWalletStorage, getHederaProvider, initAppKit, resetAppKitSession } from "./appKitHedera";
+import { useAccount } from "wagmi";
+import {
+  clearWalletStorage,
+  getEvmAddressFromSession,
+  getHederaAccountIdFromSession,
+  getHederaProvider,
+  hasEvmSession,
+  hasHederaSession,
+  initAppKit,
+  resetAppKitSession,
+  syncWagmiAfterConnect,
+} from "./appKitHedera";
 import type { HederaProvider } from "@hashgraph/hedera-wallet-connect";
 import { hederaNamespace } from "@hashgraph/hedera-wallet-connect";
 import { useAppKitAccount, useDisconnect } from "@reown/appkit/react";
+import { getHederaAccountId } from "~~/utils/scaffold-hbar/hederaAccountId";
 
 type HederaWalletConnectContextValue = {
   provider: HederaProvider | null;
+  /** Best account id for display (native session preferred). */
   accountId: string | null;
+  /** Native Hedera account id — required for x402 signing. */
+  hederaAccountId: string | null;
+  evmAddress: string | null;
+  hasEvmSession: boolean;
+  hasHederaSession: boolean;
   isConnected: boolean;
   isInitializing: boolean;
   isBusy: boolean;
@@ -18,7 +36,6 @@ type HederaWalletConnectContextValue = {
 
 const HederaWalletConnectContext = createContext<HederaWalletConnectContextValue | undefined>(undefined);
 
-// Module-level promise so init runs once and is shared across hot reloads in dev.
 let _initPromise: Promise<HederaProvider> | null = null;
 
 function ensureInit(): Promise<HederaProvider> {
@@ -30,15 +47,17 @@ function ensureInit(): Promise<HederaProvider> {
 
 export const HederaWalletConnectProvider = ({ children }: { children: React.ReactNode }) => {
   const { disconnect } = useDisconnect();
+  const { address: wagmiAddress } = useAccount();
   const [provider, setProvider] = useState<HederaProvider | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [forceDisconnected, setForceDisconnected] = useState(false);
-  // Incremented whenever the WC session changes so React re-evaluates
-  // providerHasSession without relying on object-mutation detection.
   const [sessionTick, setSessionTick] = useState(0);
-  const { address, isConnected } = useAppKitAccount({ namespace: hederaNamespace });
-  const prevAddressRef = useRef<string | null>(null);
+  const [mirrorAccountId, setMirrorAccountId] = useState<string | null>(null);
+  const { address: appKitHederaAddress, isConnected: appKitHederaConnected } = useAppKitAccount({
+    namespace: hederaNamespace,
+  });
+  const prevSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -55,10 +74,6 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
     };
   }, []);
 
-  // When the provider reference changes, subscribe to WalletConnect session
-  // events so React re-renders when session is established or deleted. Without
-  // this the providerHasSession check would be stuck on the value captured at
-  // render time because provider.session is mutated externally by the WC lib.
   useEffect(() => {
     if (!provider) return;
     const bump = () => setSessionTick(t => t + 1);
@@ -66,30 +81,36 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
       on?: (event: string, cb: () => void) => void;
       off?: (event: string, cb: () => void) => void;
     };
+    const onConnected = () => {
+      bump();
+      setForceDisconnected(false);
+      void syncWagmiAfterConnect().catch(err => console.warn("syncWagmiAfterConnect failed", err));
+    };
+
     if (typeof providerWithEvents.on === "function") {
-      providerWithEvents.on("session_update", bump);
+      providerWithEvents.on("session_update", onConnected);
       providerWithEvents.on("session_delete", bump);
-      providerWithEvents.on("connect", bump);
+      providerWithEvents.on("connect", onConnected);
       providerWithEvents.on("disconnect", bump);
     }
     return () => {
       if (typeof providerWithEvents.off === "function") {
-        providerWithEvents.off("session_update", bump);
+        providerWithEvents.off("session_update", onConnected);
         providerWithEvents.off("session_delete", bump);
-        providerWithEvents.off("connect", bump);
+        providerWithEvents.off("connect", onConnected);
         providerWithEvents.off("disconnect", bump);
       }
     };
   }, [provider]);
 
   const connectWallet = useCallback(async () => {
-    // Connect is triggered from custom UI via AppKit modal open().
+    // Connect UI is opened from WalletConnectButton via AppKit modal.
     return Promise.resolve();
   }, []);
 
   const disconnectWallet = useCallback(async () => {
     if (isBusy) return;
-    const addressWhenDisconnecting = address;
+    const sessionKeyWhenDisconnecting = prevSessionKeyRef.current;
     setIsBusy(true);
     try {
       try {
@@ -112,7 +133,6 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
           try {
             await providerWithDisconnect.disconnect();
           } catch (error) {
-            // Some providers throw here when no session was ever fully enabled.
             console.warn("Provider disconnect fallback failed", error);
           }
         }
@@ -121,13 +141,10 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
       clearWalletStorage();
       await resetAppKitSession();
       _initPromise = null;
-      // Keep last account on the ref so a stale isConnected+sameAddress frame cannot clear forceDisconnected.
-      prevAddressRef.current = addressWhenDisconnecting ?? null;
+      prevSessionKeyRef.current = sessionKeyWhenDisconnecting;
       setForceDisconnected(true);
+      setMirrorAccountId(null);
 
-      // Await re-init so isBusy stays true (and the UI stays blocked) until
-      // the provider is fully ready. Fire-and-forgetting this was the cause of
-      // a race where AppKit reported "connected" while provider was still null.
       try {
         const hp = await ensureInit();
         setProvider(hp);
@@ -137,51 +154,88 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
     } finally {
       setIsBusy(false);
     }
-  }, [isBusy, address, disconnect, provider]);
+  }, [isBusy, disconnect, provider]);
 
-  // provider.session is the WalletConnect session object set by the library
-  // after a successful connect(). AppKit can report isConnected=true before
-  // the session is available (e.g. on page refresh while the provider is still
-  // initialising, or in the brief window after reconnect). We only expose a
-  // non-null accountId when the provider session is confirmed to be live.
-  // sessionTick is read here to force React to re-evaluate after WC events.
   const providerHasSession = Boolean(
     sessionTick >= 0 && provider && (provider as unknown as { session?: unknown }).session,
   );
-  const accountId = !forceDisconnected && isConnected && address && providerHasSession ? address : null;
+
+  const sessionBlocked = forceDisconnected || !providerHasSession;
+  const sessionHederaAccountId = sessionBlocked ? null : getHederaAccountIdFromSession(provider);
+  const sessionEvmAddress = sessionBlocked ? null : getEvmAddressFromSession(provider);
+  const hederaSessionReady = sessionBlocked ? false : hasHederaSession(provider);
+  const evmSessionReady = sessionBlocked ? false : hasEvmSession(provider);
+
+  const hederaAccountId =
+    (!sessionBlocked && appKitHederaConnected && appKitHederaAddress ? appKitHederaAddress : null) ??
+    sessionHederaAccountId;
+
+  const evmAddress = wagmiAddress ?? sessionEvmAddress ?? null;
+  const accountId = hederaAccountId ?? mirrorAccountId;
 
   useEffect(() => {
-    if (isConnected && address) {
-      if (forceDisconnected && address === prevAddressRef.current) {
-        return;
-      }
-      if (forceDisconnected) {
-        setForceDisconnected(false);
-      }
-      prevAddressRef.current = address;
+    if (sessionBlocked) return;
+    const sessionKey = JSON.stringify({
+      hedera: sessionHederaAccountId,
+      evm: sessionEvmAddress,
+    });
+    if (forceDisconnected && sessionKey !== prevSessionKeyRef.current && sessionKey !== '{"hedera":null,"evm":null}') {
+      setForceDisconnected(false);
+    }
+    if (sessionKey !== '{"hedera":null,"evm":null}') {
+      prevSessionKeyRef.current = sessionKey;
+    }
+  }, [sessionBlocked, forceDisconnected, sessionHederaAccountId, sessionEvmAddress]);
+
+  useEffect(() => {
+    if (hederaAccountId || !evmAddress || sessionBlocked) {
+      setMirrorAccountId(null);
       return;
     }
-    if (!isConnected) {
-      prevAddressRef.current = null;
-    }
-  }, [isConnected, address, forceDisconnected]);
+    let cancelled = false;
+    void getHederaAccountId(evmAddress, "testnet")
+      .then(id => {
+        if (!cancelled) setMirrorAccountId(id);
+      })
+      .catch(() => {
+        if (!cancelled) setMirrorAccountId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hederaAccountId, evmAddress, sessionBlocked]);
+
+  const isConnected = Boolean(providerHasSession && !forceDisconnected && (hederaAccountId || evmAddress));
 
   const value = useMemo<HederaWalletConnectContextValue>(
     () => ({
       provider,
       accountId,
-      isConnected: Boolean(accountId),
+      hederaAccountId,
+      evmAddress,
+      hasEvmSession: evmSessionReady,
+      hasHederaSession: hederaSessionReady,
+      isConnected,
       isInitializing,
       isBusy,
       connectWallet,
       disconnectWallet,
     }),
-    [provider, accountId, isInitializing, isBusy, connectWallet, disconnectWallet],
+    [
+      provider,
+      accountId,
+      hederaAccountId,
+      evmAddress,
+      evmSessionReady,
+      hederaSessionReady,
+      isConnected,
+      isInitializing,
+      isBusy,
+      connectWallet,
+      disconnectWallet,
+    ],
   );
 
-  // Don't render children until AppKit + HederaProvider are ready.
-  // This prevents the <appkit-button> from opening the modal before the
-  // hedera namespace adapter is registered.
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen">

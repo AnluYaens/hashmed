@@ -1,15 +1,5 @@
-import { createConfig, http } from "wagmi";
+import { wagmiAdapter } from "~~/services/web3/appKitHedera";
 import scaffoldConfig from "~~/scaffold.config";
 
-const chains = scaffoldConfig.targetNetworks;
-const rpcOverrides = scaffoldConfig.rpcOverrides as Partial<Record<number, string>> | undefined;
-
-export const enabledChains = chains;
-
-export const wagmiConfig = createConfig({
-  chains,
-  transports: Object.fromEntries(chains.map(chain => [chain.id, http(rpcOverrides?.[chain.id])])) as Record<
-    number,
-    ReturnType<typeof http>
-  >,
-});
+export const enabledChains = scaffoldConfig.targetNetworks;
+export const wagmiConfig = wagmiAdapter.wagmiConfig;
