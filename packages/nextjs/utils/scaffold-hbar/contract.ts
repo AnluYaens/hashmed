@@ -415,7 +415,8 @@ export const simulateContractWriteAndNotifyError = async ({
   chainId: AllowedChainIds;
 }) => {
   try {
-    await simulateContract(wagmiConfig, params);
+    // wagmi 3 simulateContract expects SimulateContractParameters; WriteContractVariables is compatible at runtime.
+    await simulateContract(wagmiConfig, { ...params, chainId } as never);
   } catch (error) {
     const parsedError = getParsedErrorWithAllAbis(error, chainId);
 

@@ -7,7 +7,6 @@ import {
 } from "@hashgraph/hedera-wallet-connect";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { createAppKit } from "@reown/appkit/react";
-import type UniversalProvider from "@walletconnect/universal-provider";
 import { reconnect } from "@wagmi/core";
 import type { Address } from "viem";
 import scaffoldConfig from "~~/scaffold.config";
@@ -27,6 +26,8 @@ export const nativeNetworks = [HederaChainDefinition.Native.Testnet, HederaChain
 export const wagmiAdapter = new WagmiAdapter({
   projectId,
   networks: [...evmNetworks],
+  // Defer wagmi storage hydration to useEffect (avoids setState-during-render in Hydrate).
+  ssr: true,
 });
 
 const hederaNativeAdapter = new HederaAdapter({
@@ -181,7 +182,7 @@ export async function initAppKit() {
 
   _appKit = createAppKit({
     adapters: [wagmiAdapter, hederaNativeAdapter],
-    universalProvider: universalProvider as unknown as UniversalProvider,
+    universalProvider: universalProvider as never,
     projectId,
     metadata,
     networks: [...nativeNetworks, ...evmNetworks],

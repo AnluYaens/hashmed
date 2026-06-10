@@ -6,12 +6,14 @@ import { SwitchTheme } from "~~/components/SwitchTheme";
 import { useFetchHbarPrice } from "~~/hooks/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar/useTargetNetwork";
 
+const HEDERA_MAINNET_CHAIN_ID = hedera.id;
+
 /**
  * Site footer
  */
 export const Footer = () => {
   const { targetNetwork } = useTargetNetwork();
-  const isTestnet = targetNetwork.id !== hedera.id;
+  const isTestnet = targetNetwork.id !== HEDERA_MAINNET_CHAIN_ID;
   const { price: nativeCurrencyPrice } = useFetchHbarPrice();
 
   return (
