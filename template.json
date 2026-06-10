@@ -20,7 +20,6 @@
         "  cp packages/nextjs/.env.example packages/nextjs/.env",
         "+Configure facilitator fee-payer (ECDSA) in root .env:",
         "  FACILITATOR_ACCOUNT_ID and FACILITATOR_PRIVATE_KEY",
-        "+Set NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID in packages/nextjs/.env (HashPack)",
         "+Fund accounts with testnet HBAR:",
         "  https://portal.hedera.com/faucet",
         "+Start local infra (MinIO + facilitator): {run:infra:up}",

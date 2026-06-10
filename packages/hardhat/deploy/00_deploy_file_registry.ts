@@ -11,7 +11,7 @@ const deployFileRegistry: DeployFunction = async function (hre: HardhatRuntimeEn
     log: true,
     autoMine: true,
     gasLimit: "3000000",
-    gasPrice: "1100000000000",
+    gasPrice: "1120000000000",
   });
 };
 
