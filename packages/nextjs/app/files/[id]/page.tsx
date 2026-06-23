@@ -4,8 +4,6 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { NextPage } from "next";
-import type { Address } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -15,10 +13,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { FILE_REGISTRY_ABI, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
-import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { payAndGetDownloadUrl } from "~~/services/x402/client";
-import { writeContractViaProvider } from "~~/services/web3/evmContractWrite";
+import { useHederaEvmAddress, useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import { waitForHederaTransaction, writeContractViaNativeProvider } from "~~/services/web3/hederaContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
+import { payAndGetDownloadUrl } from "~~/services/x402/client";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { formatTinybar, hbarToTinybar } from "~~/utils/x402";
 
@@ -35,17 +33,9 @@ type PublicFile = {
 
 const FileDetail: NextPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { address, chain } = useAccount();
-  const {
-    accountId: hederaAccountId,
-    evmAddress,
-    hasHederaSession,
-    isConnected,
-    provider,
-  } = useHederaWalletConnect();
+  const { hederaAccountId, hasHederaSession, isConnected, provider } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
-  const publicClient = usePublicClient();
-  const signerAddress = (address ?? evmAddress) as Address | undefined;
+  const { evmAddress: ownerEvmAddress } = useHederaEvmAddress(hederaAccountId, targetNetwork.id);
 
   const canPay = isConnected && hasHederaSession && !!hederaAccountId;
 
@@ -55,8 +45,7 @@ const FileDetail: NextPage = () => {
   const [downloading, setDownloading] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
-  const isOwner = !!address && !!file && address.toLowerCase() === file.owner.toLowerCase();
-  const onWrongNetwork = !!chain && chain.id !== targetNetwork.id;
+  const isOwner = !!ownerEvmAddress && !!file && ownerEvmAddress.toLowerCase() === file.owner.toLowerCase();
 
   const resourceUrl = useMemo(
     () => (typeof window !== "undefined" && id ? `${window.location.origin}/api/files/${id}/download` : ""),
@@ -202,7 +191,7 @@ const FileDetail: NextPage = () => {
             <div className="flex flex-col gap-3">
               <button
                 className="btn btn-primary w-full gap-2"
-                disabled={downloading || !canPay || onWrongNetwork}
+                disabled={downloading || !canPay}
                 onClick={handlePaidDownload}
               >
                 {downloading ? (
@@ -227,9 +216,6 @@ const FileDetail: NextPage = () => {
                   HashPack did not provide a Hedera account ID. Make sure your wallet supports the Hedera namespace.
                 </span>
               )}
-              {onWrongNetwork && (
-                <span className="text-xs text-center text-warning">Switch to {targetNetwork.name} to pay.</span>
-              )}
             </div>
           )}
 
@@ -244,21 +230,19 @@ const FileDetail: NextPage = () => {
           file={file}
           onUpdated={load}
           write={async (functionName, args) => {
-            if (!provider || !signerAddress || !registryAddress) {
+            if (!provider || !hederaAccountId || !registryAddress) {
               throw new Error("Connect HashPack to manage this file on-chain.");
             }
-            const hash = await writeContractViaProvider({
+            const { transactionId } = await writeContractViaNativeProvider({
               provider,
-              contractAddress: registryAddress,
-              evmAddress: signerAddress,
+              hederaAccountId,
               chainId: targetNetwork.id,
+              contractAddress: registryAddress,
               abi: FILE_REGISTRY_ABI,
               functionName,
               fnArgs: args,
-              wagmiAddress: address,
-              wagmiChainId: chain?.id,
             });
-            await publicClient?.waitForTransactionReceipt({ hash });
+            await waitForHederaTransaction(transactionId, targetNetwork.id);
           }}
         />
       )}

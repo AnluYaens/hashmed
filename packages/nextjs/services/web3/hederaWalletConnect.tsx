@@ -1,31 +1,25 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount } from "wagmi";
 import {
   clearWalletStorage,
-  getEvmAddressFromSession,
   getHederaAccountIdFromSession,
   getHederaProvider,
-  hasEvmSession,
   hasHederaSession,
   initAppKit,
   resetAppKitSession,
-  syncWagmiAfterConnect,
 } from "./appKitHedera";
 import type { HederaProvider } from "@hashgraph/hedera-wallet-connect";
 import { hederaNamespace } from "@hashgraph/hedera-wallet-connect";
 import { useAppKitAccount, useDisconnect } from "@reown/appkit/react";
-import { getHederaAccountId } from "~~/utils/scaffold-hbar/hederaAccountId";
+import { parseHederaAccountId } from "~~/utils/scaffold-hbar/hederaAccountId";
 
 type HederaWalletConnectContextValue = {
   provider: HederaProvider | null;
-  /** Best account id for display (native session preferred). */
-  accountId: string | null;
-  /** Native Hedera account id — required for x402 signing. */
+  /** Native Hedera account id from the WalletConnect session. */
   hederaAccountId: string | null;
-  evmAddress: string | null;
-  hasEvmSession: boolean;
+  /** Alias of `hederaAccountId` for display components. */
+  accountId: string | null;
   hasHederaSession: boolean;
   isConnected: boolean;
   isInitializing: boolean;
@@ -47,13 +41,11 @@ function ensureInit(): Promise<HederaProvider> {
 
 export const HederaWalletConnectProvider = ({ children }: { children: React.ReactNode }) => {
   const { disconnect } = useDisconnect();
-  const { address: wagmiAddress } = useAccount();
   const [provider, setProvider] = useState<HederaProvider | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [forceDisconnected, setForceDisconnected] = useState(false);
   const [sessionTick, setSessionTick] = useState(0);
-  const [mirrorAccountId, setMirrorAccountId] = useState<string | null>(null);
   const { address: appKitHederaAddress, isConnected: appKitHederaConnected } = useAppKitAccount({
     namespace: hederaNamespace,
   });
@@ -84,7 +76,6 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
     const onConnected = () => {
       bump();
       setForceDisconnected(false);
-      void syncWagmiAfterConnect().catch(err => console.warn("syncWagmiAfterConnect failed", err));
     };
 
     if (typeof providerWithEvents.on === "function") {
@@ -103,10 +94,7 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
     };
   }, [provider]);
 
-  const connectWallet = useCallback(async () => {
-    // Connect UI is opened from WalletConnectButton via AppKit modal.
-    return Promise.resolve();
-  }, []);
+  const connectWallet = useCallback(async () => Promise.resolve(), []);
 
   const disconnectWallet = useCallback(async () => {
     if (isBusy) return;
@@ -143,7 +131,6 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
       _initPromise = null;
       prevSessionKeyRef.current = sessionKeyWhenDisconnecting;
       setForceDisconnected(true);
-      setMirrorAccountId(null);
 
       try {
         const hp = await ensureInit();
@@ -162,58 +149,29 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
 
   const sessionBlocked = forceDisconnected || !providerHasSession;
   const sessionHederaAccountId = sessionBlocked ? null : getHederaAccountIdFromSession(provider);
-  const sessionEvmAddress = sessionBlocked ? null : getEvmAddressFromSession(provider);
+  const appKitHederaAccountId =
+    !sessionBlocked && appKitHederaConnected && appKitHederaAddress ? parseHederaAccountId(appKitHederaAddress) : null;
+  const hederaAccountId = sessionHederaAccountId ?? appKitHederaAccountId;
   const hederaSessionReady = sessionBlocked ? false : hasHederaSession(provider);
-  const evmSessionReady = sessionBlocked ? false : hasEvmSession(provider);
-
-  const hederaAccountId =
-    (!sessionBlocked && appKitHederaConnected && appKitHederaAddress ? appKitHederaAddress : null) ??
-    sessionHederaAccountId;
-
-  const evmAddress = wagmiAddress ?? sessionEvmAddress ?? null;
-  const accountId = hederaAccountId ?? mirrorAccountId;
 
   useEffect(() => {
     if (sessionBlocked) return;
-    const sessionKey = JSON.stringify({
-      hedera: sessionHederaAccountId,
-      evm: sessionEvmAddress,
-    });
-    if (forceDisconnected && sessionKey !== prevSessionKeyRef.current && sessionKey !== '{"hedera":null,"evm":null}') {
+    const sessionKey = JSON.stringify({ hedera: sessionHederaAccountId });
+    if (forceDisconnected && sessionKey !== prevSessionKeyRef.current && sessionKey !== '{"hedera":null}') {
       setForceDisconnected(false);
     }
-    if (sessionKey !== '{"hedera":null,"evm":null}') {
+    if (sessionKey !== '{"hedera":null}') {
       prevSessionKeyRef.current = sessionKey;
     }
-  }, [sessionBlocked, forceDisconnected, sessionHederaAccountId, sessionEvmAddress]);
+  }, [sessionBlocked, forceDisconnected, sessionHederaAccountId]);
 
-  useEffect(() => {
-    if (hederaAccountId || !evmAddress || sessionBlocked) {
-      setMirrorAccountId(null);
-      return;
-    }
-    let cancelled = false;
-    void getHederaAccountId(evmAddress, "testnet")
-      .then(id => {
-        if (!cancelled) setMirrorAccountId(id);
-      })
-      .catch(() => {
-        if (!cancelled) setMirrorAccountId(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [hederaAccountId, evmAddress, sessionBlocked]);
-
-  const isConnected = Boolean(providerHasSession && !forceDisconnected && (hederaAccountId || evmAddress));
+  const isConnected = Boolean(providerHasSession && !forceDisconnected && hederaSessionReady && !!hederaAccountId);
 
   const value = useMemo<HederaWalletConnectContextValue>(
     () => ({
       provider,
-      accountId,
       hederaAccountId,
-      evmAddress,
-      hasEvmSession: evmSessionReady,
+      accountId: hederaAccountId,
       hasHederaSession: hederaSessionReady,
       isConnected,
       isInitializing,
@@ -223,10 +181,7 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
     }),
     [
       provider,
-      accountId,
       hederaAccountId,
-      evmAddress,
-      evmSessionReady,
       hederaSessionReady,
       isConnected,
       isInitializing,

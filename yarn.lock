@@ -4554,31 +4554,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reown/appkit-adapter-wagmi@npm:^1.8.19":
-  version: 1.8.20
-  resolution: "@reown/appkit-adapter-wagmi@npm:1.8.20"
-  dependencies:
-    "@reown/appkit": 1.8.20
-    "@reown/appkit-common": 1.8.20
-    "@reown/appkit-controllers": 1.8.20
-    "@reown/appkit-polyfills": 1.8.20
-    "@reown/appkit-scaffold-ui": 1.8.20
-    "@reown/appkit-utils": 1.8.20
-    "@reown/appkit-wallet": 1.8.20
-    "@wagmi/connectors": ">=5.9.9"
-    "@walletconnect/universal-provider": 2.23.7
-    valtio: 2.1.7
-  peerDependencies:
-    "@wagmi/core": ">=2.21.2"
-    viem: ">=2.45.0"
-    wagmi: ">=2.19.5"
-  dependenciesMeta:
-    "@wagmi/connectors":
-      optional: true
-  checksum: f6908a2f5f30bb7a2af3f03810737bbd6dc3d53ac972cad40cd766a79ad601c1d6666c9da77bbed1a29255ac70d2e3a8b83249498dff990ec0ded91b1902ef39
-  languageName: node
-  linkType: hard
-
 "@reown/appkit-common@npm:1.8.17-wc-circular-dependencies-fix.0":
   version: 1.8.17-wc-circular-dependencies-fix.0
   resolution: "@reown/appkit-common@npm:1.8.17-wc-circular-dependencies-fix.0"
@@ -4841,7 +4816,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reown/appkit@npm:1.8.20, @reown/appkit@npm:^1.8.19":
+"@reown/appkit@npm:^1.8.19":
   version: 1.8.20
   resolution: "@reown/appkit@npm:1.8.20"
   dependencies:
@@ -5217,7 +5192,6 @@ __metadata:
     "@hiero-ledger/sdk": ^2.80.0
     "@react-native-async-storage/async-storage": ^2.2.0
     "@reown/appkit": ^1.8.19
-    "@reown/appkit-adapter-wagmi": ^1.8.19
     "@reown/appkit-controllers": ^1.8.19
     "@reown/walletkit": ^1.5.4
     "@scaffold-hbar-ui/components": ^2.0.0
@@ -8060,7 +8034,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wagmi/connectors@npm:8.0.15, @wagmi/connectors@npm:>=5.9.9":
+"@wagmi/connectors@npm:8.0.15":
   version: 8.0.15
   resolution: "@wagmi/connectors@npm:8.0.15"
   peerDependencies:

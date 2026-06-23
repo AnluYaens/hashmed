@@ -3,12 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NextPage } from "next";
-import { type Hex, type Address, toHex } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
+import { type Address, type Hex, toHex } from "viem";
 import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import { FILE_REGISTRY_ABI, computeFileId, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
-import { useHederaAccountId, useTargetNetwork } from "~~/hooks/scaffold-hbar";
-import { writeContractViaProvider } from "~~/services/web3/evmContractWrite";
+import { useHederaEvmAddress, useTargetNetwork } from "~~/hooks/scaffold-hbar";
+import { waitForHederaTransaction, writeContractViaNativeProvider } from "~~/services/web3/hederaContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { hbarToTinybar } from "~~/utils/x402";
@@ -23,19 +22,9 @@ async function sha256Hex(file: File): Promise<Hex> {
 
 const UploadFile: NextPage = () => {
   const router = useRouter();
-  const { address, chain } = useAccount();
-  const {
-    isConnected: hashpackConnected,
-    accountId: connectedAccountId,
-    evmAddress: sessionEvmAddress,
-    hasEvmSession,
-    provider,
-  } = useHederaWalletConnect();
+  const { isConnected, hederaAccountId, hasHederaSession, provider } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
-  const publicClient = usePublicClient();
-  const signerAddress = (address ?? sessionEvmAddress) as Address | undefined;
-  const { accountId: resolvedOwnerAccountId } = useHederaAccountId(signerAddress, targetNetwork.id);
-  const ownerAccountId = connectedAccountId ?? resolvedOwnerAccountId;
+  const { evmAddress, isLoading: resolvingEvmAddress } = useHederaEvmAddress(hederaAccountId, targetNetwork.id);
 
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -45,8 +34,8 @@ const UploadFile: NextPage = () => {
   const [busy, setBusy] = useState(false);
 
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
-  const effectivePayTo = payTo || ownerAccountId || "";
-  const onWrongNetwork = !!chain && chain.id !== targetNetwork.id;
+  const effectivePayTo = payTo || hederaAccountId || "";
+  const ownerEvmAddress = evmAddress as Address | undefined;
 
   const priceError = useMemo(() => {
     if (isPublic) return null;
@@ -62,12 +51,12 @@ const UploadFile: NextPage = () => {
   const canSubmit =
     !!file &&
     !!name.trim() &&
-    !!signerAddress &&
+    !!hederaAccountId &&
+    !!ownerEvmAddress &&
     !!registryAddress &&
-    !onWrongNetwork &&
     !priceError &&
     !busy &&
-    hasEvmSession;
+    hasHederaSession;
 
   const handleFile = (next: File | null) => {
     setFile(next);
@@ -75,7 +64,7 @@ const UploadFile: NextPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!file || !signerAddress || !registryAddress || !publicClient || !provider) return;
+    if (!file || !hederaAccountId || !ownerEvmAddress || !registryAddress || !provider) return;
 
     const payToTrimmed = effectivePayTo.trim();
     if (!HEDERA_ID_RE.test(payToTrimmed)) {
@@ -94,7 +83,6 @@ const UploadFile: NextPage = () => {
     setBusy(true);
     const toastId = notification.loading("Requesting upload URL…");
     try {
-      // 1) Presigned upload URL from the resource server.
       const uploadRes = await fetch("/api/files/upload", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -110,7 +98,6 @@ const UploadFile: NextPage = () => {
         throw new Error(uploadData.error ?? "Failed to get upload URL");
       }
 
-      // 2) Hash + upload the bytes straight to MinIO.
       notification.remove(toastId);
       const hashToastId = notification.loading("Uploading file…");
       const contentHash = await sha256Hex(file);
@@ -122,7 +109,6 @@ const UploadFile: NextPage = () => {
       notification.remove(hashToastId);
       if (!putRes.ok) throw new Error(`Upload failed (status ${putRes.status})`);
 
-      // 3) Register the file on-chain.
       const registerToastId = notification.loading("Confirm registration in your wallet…");
       const objectKey = uploadData.objectKey;
       const registerArgs = [
@@ -135,22 +121,20 @@ const UploadFile: NextPage = () => {
         file.type || "application/octet-stream",
       ] as const;
 
-      const hash = await writeContractViaProvider({
+      const { transactionId } = await writeContractViaNativeProvider({
         provider,
-        contractAddress: registryAddress,
-        evmAddress: signerAddress,
+        hederaAccountId,
         chainId: targetNetwork.id,
+        contractAddress: registryAddress,
         abi: FILE_REGISTRY_ABI,
         functionName: "registerFile",
         fnArgs: registerArgs,
-        wagmiAddress: address,
-        wagmiChainId: chain?.id,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      await waitForHederaTransaction(transactionId, targetNetwork.id);
       notification.remove(registerToastId);
       notification.success("File registered!");
 
-      const fileId = computeFileId(signerAddress, objectKey);
+      const fileId = computeFileId(ownerEvmAddress, objectKey);
       router.push(`/files/${fileId}`);
     } catch (e) {
       notification.remove(toastId);
@@ -173,11 +157,6 @@ const UploadFile: NextPage = () => {
             FileRegistry is not deployed on {targetNetwork.name}. Run <code>yarn deploy</code> (or set{" "}
             <code>NEXT_PUBLIC_FILE_REGISTRY_ADDRESS</code>) and reload.
           </span>
-        </div>
-      )}
-      {onWrongNetwork && (
-        <div className="alert alert-warning mb-6">
-          <span>Switch your wallet to {targetNetwork.name} to register files.</span>
         </div>
       )}
 
@@ -242,12 +221,12 @@ const UploadFile: NextPage = () => {
           <input
             type="text"
             className="input input-bordered w-full"
-            placeholder={ownerAccountId ?? "0.0.1234"}
+            placeholder={hederaAccountId ?? "0.0.1234"}
             value={payTo}
             onChange={e => setPayTo(e.target.value)}
           />
           <span className="text-xs text-base-content/50">
-            {ownerAccountId ? `Defaults to your account ${ownerAccountId}` : "Your Hedera account id (0.0.x)"}
+            {hederaAccountId ? `Defaults to your account ${hederaAccountId}` : "Your Hedera account id (0.0.x)"}
           </span>
         </label>
 
@@ -255,12 +234,19 @@ const UploadFile: NextPage = () => {
           {busy ? <span className="loading loading-spinner loading-sm" /> : <ArrowUpTrayIcon className="h-4 w-4" />}
           {busy ? "Working…" : "Upload & register"}
         </button>
-        {!hashpackConnected && (
-          <span className="text-xs text-center text-base-content/50">Connect HashPack in the header to register files.</span>
+        {!isConnected && (
+          <span className="text-xs text-center text-base-content/50">
+            Connect HashPack in the header to register files.
+          </span>
         )}
-        {hashpackConnected && !hasEvmSession && (
+        {isConnected && !hasHederaSession && (
           <span className="text-xs text-center text-warning">
-            Your wallet session is missing EVM permissions. Disconnect, then connect again to upload files.
+            Reconnect HashPack to approve native Hedera signing for registration.
+          </span>
+        )}
+        {isConnected && hasHederaSession && !ownerEvmAddress && !resolvingEvmAddress && (
+          <span className="text-xs text-center text-warning">
+            This account has no EVM alias on {targetNetwork.name}. Use an ECDSA testnet account.
           </span>
         )}
       </div>

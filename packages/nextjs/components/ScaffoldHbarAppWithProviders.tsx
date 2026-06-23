@@ -8,7 +8,6 @@ import { WagmiProvider } from "wagmi";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { LocalChainErrorBanner } from "~~/components/LocalChainErrorBanner";
-import { WagmiSync } from "~~/components/WagmiSync";
 import { HederaWalletConnectProvider } from "~~/services/web3/hederaWalletConnect";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
@@ -39,7 +38,6 @@ export const ScaffoldHbarAppWithProviders = ({ children }: { children: React.Rea
     <WagmiProvider config={wagmiConfig as Config} reconnectOnMount={false}>
       <QueryClientProvider client={queryClient}>
         <HederaWalletConnectProvider>
-          <WagmiSync />
           <ProgressBar height="3px" color="#2299dd" />
           <ScaffoldHbarApp>{children}</ScaffoldHbarApp>
         </HederaWalletConnectProvider>
