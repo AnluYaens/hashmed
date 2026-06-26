@@ -12,7 +12,11 @@ import {
   LockOpenIcon,
 } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
-import { FILE_REGISTRY_ABI, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
+import {
+  FILE_REGISTRY_ABI,
+  getFileRegistryAddress,
+  getFileRegistryHederaContractId,
+} from "~~/contracts/fileRegistryAbi";
 import { useHederaEvmAddress, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { waitForHederaTransaction, writeContractViaNativeProvider } from "~~/services/web3/hederaContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
@@ -45,6 +49,7 @@ const FileDetail: NextPage = () => {
   const [downloading, setDownloading] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
+  const registryHederaContractId = getFileRegistryHederaContractId(targetNetwork.id);
   const isOwner = !!ownerEvmAddress && !!file && ownerEvmAddress.toLowerCase() === file.owner.toLowerCase();
 
   const resourceUrl = useMemo(
@@ -238,6 +243,7 @@ const FileDetail: NextPage = () => {
               hederaAccountId,
               chainId: targetNetwork.id,
               contractAddress: registryAddress,
+              hederaContractId: registryHederaContractId,
               abi: FILE_REGISTRY_ABI,
               functionName,
               fnArgs: args,

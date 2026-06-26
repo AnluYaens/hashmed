@@ -15,3 +15,4 @@ export * from "./useTransactor";
 export * from "./useSelectedNetwork";
 export * from "./useHederaAccountId";
 export * from "./useHederaEvmAddress";
+export * from "./useRegistryFileListing";

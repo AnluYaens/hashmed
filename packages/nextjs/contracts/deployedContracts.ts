@@ -8,6 +8,7 @@ const deployedContracts = {
   296: {
     FileRegistry: {
       address: "0x4c5e0F1Fd7b13D1632f876944C9f7861Bdd177Bd",
+      hederaContractId: "0.0.9214560",
       abi: [
         {
           inputs: [

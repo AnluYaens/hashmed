@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import type { NextPage } from "next";
 import { type Address, type Hex, toHex } from "viem";
 import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
-import { FILE_REGISTRY_ABI, computeFileId, getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
+import {
+  FILE_REGISTRY_ABI,
+  computeFileId,
+  getFileRegistryAddress,
+  getFileRegistryHederaContractId,
+} from "~~/contracts/fileRegistryAbi";
 import { useHederaEvmAddress, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { waitForHederaTransaction, writeContractViaNativeProvider } from "~~/services/web3/hederaContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
@@ -34,6 +39,7 @@ const UploadFile: NextPage = () => {
   const [busy, setBusy] = useState(false);
 
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
+  const registryHederaContractId = getFileRegistryHederaContractId(targetNetwork.id);
   const effectivePayTo = payTo || hederaAccountId || "";
   const ownerEvmAddress = evmAddress as Address | undefined;
 
@@ -126,6 +132,7 @@ const UploadFile: NextPage = () => {
         hederaAccountId,
         chainId: targetNetwork.id,
         contractAddress: registryAddress,
+        hederaContractId: registryHederaContractId,
         abi: FILE_REGISTRY_ABI,
         functionName: "registerFile",
         fnArgs: registerArgs,

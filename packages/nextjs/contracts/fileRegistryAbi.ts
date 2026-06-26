@@ -194,6 +194,19 @@ export function getFileRegistryAddress(chainId: number): Address | undefined {
 }
 
 /**
+ * Resolve the native Hedera contract id for `FileRegistry` on a chain.
+ * Required for HashPack native `ContractExecuteTransaction` calls.
+ */
+export function getFileRegistryHederaContractId(chainId: number): string | undefined {
+  const fromEnv =
+    process.env.NEXT_PUBLIC_FILE_REGISTRY_HEDERA_CONTRACT_ID ?? process.env.FILE_REGISTRY_HEDERA_CONTRACT_ID;
+  if (fromEnv?.trim()) return fromEnv.trim();
+
+  const chainContracts = (deployedContracts as Record<number, Record<string, { hederaContractId?: string }>>)[chainId];
+  return chainContracts?.FileRegistry?.hederaContractId;
+}
+
+/**
  * Compute the deterministic file id for an `(owner, objectKey)` pair, mirroring
  * the contract's `computeFileId`. Lets the client predict the id of a file it is
  * about to register without an extra RPC round-trip.

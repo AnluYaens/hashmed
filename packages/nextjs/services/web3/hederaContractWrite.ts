@@ -1,9 +1,10 @@
 import type { HederaProvider } from "@hashgraph/hedera-wallet-connect";
 import { transactionToBase64String } from "@hashgraph/hedera-wallet-connect";
-import { ContractExecuteTransaction, ContractId } from "@hiero-ledger/sdk";
+import { ContractExecuteTransaction } from "@hiero-ledger/sdk";
 import type { Abi, Address } from "viem";
 import { encodeFunctionData } from "viem";
 import { chainIdToHederaNetwork, parseHederaAccountId } from "~~/utils/scaffold-hbar/hederaAccountId";
+import { resolveNativeContractId } from "~~/utils/scaffold-hbar/hederaContractId";
 
 /** Matches Hardhat deploy gasLimit for FileRegistry. */
 const CONTRACT_EXECUTE_GAS = 3_000_000;
@@ -62,6 +63,8 @@ export async function writeContractViaNativeProvider(args: {
   hederaAccountId: string;
   chainId: number;
   contractAddress: Address;
+  /** Native Hedera contract id (`0.0.x`). Resolved from mirror node when omitted. */
+  hederaContractId?: string;
   abi: Abi;
   functionName: string;
   fnArgs: readonly unknown[];
@@ -77,8 +80,14 @@ export async function writeContractViaNativeProvider(args: {
     args: args.fnArgs as never,
   });
 
+  const contractId = await resolveNativeContractId({
+    hederaContractId: args.hederaContractId,
+    evmAddress: args.contractAddress,
+    chainId: args.chainId,
+  });
+
   const tx = new ContractExecuteTransaction()
-    .setContractId(ContractId.fromSolidityAddress(args.contractAddress))
+    .setContractId(contractId)
     .setGas(CONTRACT_EXECUTE_GAS)
     .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"));
 
