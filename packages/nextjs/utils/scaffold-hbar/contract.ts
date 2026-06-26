@@ -68,6 +68,8 @@ export type InheritedFunctions = { readonly [key: string]: string };
 export type GenericContract = {
   address: Address;
   abi: Abi;
+  /** Native Hedera contract id (`0.0.x`) for JSON-RPC-deployed contracts. */
+  hederaContractId?: string;
   inheritedFunctions?: InheritedFunctions;
   external?: true;
   deployedOnBlock?: number;

@@ -5,3 +5,4 @@ export * from "./decodeTxData";
 export * from "./getParsedError";
 export * from "./hbarPrice";
 export * from "./hederaAccountId";
+export * from "./hederaContractId";
