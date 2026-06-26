@@ -58,12 +58,12 @@ Step-by-step verification (curl, facilitator health checks, CLI buyer script) is
 
 ## How it works
 
-1. **Upload** — the browser gets a presigned MinIO PUT URL from `POST /api/files/upload`, then registers metadata on `FileRegistry`.
-2. **List / browse** — the marketplace reads `FileRegistered` events and on-chain file metadata.
+1. **Upload** — the browser gets a presigned MinIO PUT URL from `POST /api/files/upload`, PUTs the bytes to MinIO, then registers metadata on `FileRegistry` via a native Hedera `ContractExecuteTransaction` signed in HashPack (`hedera_signAndExecuteTransaction`).
+2. **List / browse** — the marketplace calls on-chain `getFileCount()` + `getFiles(offset, limit)` (view reads via JSON-RPC). It does **not** scan `FileRegistered` logs — Hedera JSON-RPC limits `eth_getLogs` to a 7-day window.
 3. **Download (public)** — `GET /api/files/:id/download` returns a presigned GET URL with no payment.
 4. **Download (private)** — the same route returns `402 Payment Required`; the x402 client builds a native Hedera `TransferTransaction`, your connected **HashPack** session **partially signs** it (authorizing the HBAR debit), the facilitator **co-signs as fee payer**, submits the transaction to Hedera, and the server responds with a presigned URL plus a `PAYMENT-RESPONSE` receipt.
 
-One **HashPack** WalletConnect session (via Reown AppKit) covers both EVM contract calls (upload, register) and native x402 payments — no second wallet connection.
+One **HashPack** WalletConnect session (via Reown AppKit, **`hedera` namespace only**) covers both registry writes and x402 payments — no second wallet connection and no separate EVM (`eip155`) signing path.
 
 ## Why the facilitator needs a private key
 
@@ -84,7 +84,7 @@ The Next.js app does **not** need this private key. It only calls `FACILITATOR_U
 | Location | Key variables |
 | --- | --- |
 | Root `.env` | `MINIO_ROOT_*`, `S3_BUCKET`, `FACILITATOR_ACCOUNT_ID`, `FACILITATOR_PRIVATE_KEY` (fee payer — see above), `X402_NETWORK` |
-| `packages/nextjs/.env` | `FACILITATOR_URL`, `X402_NETWORK`, `NEXT_PUBLIC_X402_NETWORK`, `S3_*`, `HEDERA_RPC_URL`, optional `FILE_REGISTRY_ADDRESS` |
+| `packages/nextjs/.env` | `FACILITATOR_URL`, `X402_NETWORK`, `NEXT_PUBLIC_X402_NETWORK`, `S3_*`, `HEDERA_RPC_URL`, optional `FILE_REGISTRY_ADDRESS`, optional `FILE_REGISTRY_HEDERA_CONTRACT_ID` / `NEXT_PUBLIC_FILE_REGISTRY_HEDERA_CONTRACT_ID` |
 | `facilitator/.env` | Same fee-payer credentials when running the facilitator outside Docker |
 
 Full tables: [`RUNBOOK.md` — Environment variables](RUNBOOK.md#environment-variables).
@@ -97,6 +97,11 @@ Deployer and facilitator accounts must be **ECDSA** and funded with testnet HBAR
 yarn hardhat:deploy --network hederaTestnet
 yarn hardhat:verify:testnet
 ```
+
+This regenerates `packages/nextjs/contracts/deployedContracts.ts` with:
+
+- **`address`** — EVM address (`0x…`) used for JSON-RPC reads and HashScan links
+- **`hederaContractId`** — native Hedera contract id (`0.0.x`) resolved from the mirror node after deploy; required for HashPack native contract executes
 
 Verified contracts appear on [Hashscan (testnet)](https://hashscan.io/testnet).
 
@@ -112,10 +117,12 @@ Verified contracts appear on [Hashscan (testnet)](https://hashscan.io/testnet).
 
 ## Caveats
 
-- **HashPack only** — the demo uses Reown AppKit with HashPack (EVM + native Hedera namespaces). MetaMask and the dev burner wallet are not supported in this template.
+- **HashPack only** — the demo uses Reown AppKit with HashPack on the native **`hedera`** WalletConnect namespace. MetaMask and the dev burner wallet are not supported in this template.
+- **Native Hedera signing** — registry writes and x402 payments both go through HashPack’s native Hedera APIs (`hedera_signAndExecuteTransaction` / `hedera_signTransaction`), not wagmi `eth_sendTransaction`.
 - **ECDSA accounts** — buyers and the facilitator fee payer must use ECDSA keys (not ED25519).
 - **HBAR balance** — buyers need testnet HBAR for each private download; the facilitator account needs HBAR to sponsor network fees.
 - **Testnet settlement** — MinIO and the facilitator run locally, but payments settle on Hedera **testnet** (or mainnet if you change `X402_NETWORK`). The local Hedera fork is not used for x402.
+- **Hedera JSON-RPC log limits** — `eth_getLogs` is capped to a 7-day range on Hedera; the marketplace lists files via `getFiles` instead of event scanning.
 - **Docker** — required for `yarn infra:up`.
 - **No on-chain privacy** — payment amounts and accounts are visible on HashScan.
 - **Package churn** — pin `@x402/hedera` / `@x402/core` versions; APIs may change between releases.

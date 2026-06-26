@@ -9,8 +9,8 @@ import scaffoldConfig from "~~/scaffold.config";
  * The registry is the source of truth for who owns a file, what it costs, and
  * whether it is public. The resource server reads it on every download to
  * decide between "serve for free" and "gate behind an x402 payment". Writes
- * (register / set price / set visibility) happen from the browser via wagmi,
- * never here.
+ * (register / set price / set visibility) happen from the browser via native
+ * Hedera contract executes (HashPack), never here.
  */
 
 /** A registered file as returned by the registry, normalised for server use. */

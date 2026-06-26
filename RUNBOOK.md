@@ -45,7 +45,7 @@ reverts, and pagination edge cases. A gas report prints at the end.
 
 ### 1.3 (Optional) Deploy to Hedera testnet
 
-This regenerates `packages/nextjs/contracts/deployedContracts.ts` with the live address.
+This regenerates `packages/nextjs/contracts/deployedContracts.ts` with the live EVM address and native Hedera contract id.
 
 ```bash
 # One-time: create or import a funded deployer key
@@ -56,8 +56,9 @@ yarn hardhat:deploy --network hederaTestnet
 
 Expected:
 - `deploying "FileRegistry" ... deployed at 0x...`
+- `Resolved Hedera contract id: 0.0.xxxxx`
 - `📝 Updated TypeScript contract definition file on ../nextjs/contracts/deployedContracts.ts`
-- A `296: { FileRegistry: { address, abi, ... } }` entry now exists in `deployedContracts.ts`.
+- A `296: { FileRegistry: { address, hederaContractId, abi, ... } }` entry now exists in `deployedContracts.ts`.
 - View it on HashScan: `https://hashscan.io/testnet/contract/0x...`
 
 ---
@@ -162,8 +163,8 @@ Iteration 4; here we confirm uploads work and that a private file produces a wel
 
 ### 3.1 Prerequisites for this iteration
 
-1. `FileRegistry` deployed and `deployedContracts.ts` populated (Iteration 1.3), **or** set
-   `FILE_REGISTRY_ADDRESS` in `packages/nextjs/.env`.
+1. `FileRegistry` deployed and `deployedContracts.ts` populated with `address` + `hederaContractId` (Iteration 1.3), **or** set
+   `FILE_REGISTRY_ADDRESS` / `FILE_REGISTRY_HEDERA_CONTRACT_ID` in `packages/nextjs/.env`.
 2. The infra stack running (`yarn infra:up`) so MinIO (`:9000`) and the facilitator (`:4020`)
    are reachable.
 3. Next.js env configured:
@@ -196,9 +197,9 @@ curl -s -X PUT "$URL" -H 'content-type: text/plain' --data-binary @/tmp/hello.tx
 # => 200
 ```
 
-The object now exists in the private bucket. In a real flow the browser next calls
-`FileRegistry.registerFile(objectKey, payToAccountId, priceTinybar, isPublic, ...)`; use the
-**Upload** page at `/files/upload` or register via `cast`/Hardhat console.
+The object now exists in the private bucket. In a real flow the browser next submits a native
+Hedera `ContractExecuteTransaction` for `FileRegistry.registerFile(...)` via HashPack; use the
+**Upload** page at `/files/upload` or register via Hardhat console / cast against the JSON-RPC relay.
 
 ### 3.4 Public download returns `200` + a presigned URL
 
@@ -239,23 +240,29 @@ Sanity checks:
 
 ## Iteration 4 — Client + UI
 
-End-to-end pay-per-download on testnet via HashPack (WalletConnect) or the Node agent script.
+End-to-end upload, marketplace listing, and pay-per-download on testnet via HashPack (WalletConnect) or the Node agent script.
 
 ### Prerequisites
 
-- Iterations 1–3 complete (registry deployed, MinIO + facilitator running, `yarn next:dev` up).
+- Iterations 1–3 complete (registry deployed with `address` + `hederaContractId` in `deployedContracts.ts`, MinIO + facilitator running, `yarn next:dev` up).
 - `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` set in `packages/nextjs/.env` (reused for HashPack).
 - `NEXT_PUBLIC_X402_NETWORK=hedera:testnet` matches `X402_NETWORK`.
 - HashPack mobile app on the same Hedera testnet, funded with testnet HBAR.
 
-### A — Pay with HashPack (browser)
+### A — Upload and browse (browser)
+
+1. Connect **HashPack** in the header — approve the WalletConnect session on the native **`hedera`** namespace.
+2. Upload at `/files/upload` — after MinIO PUT, HashPack prompts to sign the native `registerFile` contract execute.
+3. Open `/files` — the marketplace lists entries via on-chain `getFiles` (polls every 10s). New uploads appear after registration confirms.
+
+### B — Pay with HashPack (browser)
 
 1. Open a **private** file at `/files/<id>`.
-2. Click **Connect HashPack** in the header and approve the WalletConnect session (EVM + native Hedera).
-3. Click **Pay … HBAR & download** — HashPack prompts to sign the native HBAR transfer.
+2. Ensure HashPack is connected (same session as upload).
+3. Click **Pay … HBAR & download** — HashPack prompts to partially sign the native HBAR transfer.
 4. After settlement you should get a presigned download URL and a tx receipt on the page.
 
-### B — Pay from the Node agent
+### C — Pay from the Node agent
 
 ```bash
 RESOURCE_URL="http://localhost:3000/api/files/<fileId>/download" \
@@ -288,7 +295,8 @@ running the stack.
 | --- | --- |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect project id (HashPack via Reown AppKit) |
 | `HEDERA_RPC_URL` | RPC for on-chain `FileRegistry` reads |
-| `FILE_REGISTRY_ADDRESS` | Optional override when not in `deployedContracts.ts` |
+| `FILE_REGISTRY_ADDRESS` | Optional EVM address override when not in `deployedContracts.ts` |
+| `FILE_REGISTRY_HEDERA_CONTRACT_ID` / `NEXT_PUBLIC_FILE_REGISTRY_HEDERA_CONTRACT_ID` | Optional native contract id override (`0.0.x`) for HashPack contract executes |
 | `FACILITATOR_URL` | x402 facilitator base URL (default `http://localhost:4020`) |
 | `X402_NETWORK` | Server-side x402 network id |
 | `NEXT_PUBLIC_X402_NETWORK` | Browser x402 client network (must match `X402_NETWORK`) |
@@ -322,6 +330,11 @@ hosted facilitator instead (e.g. Blocky402 testnet), set `FACILITATOR_URL` in
   broadcasts the transaction. Keep `FACILITATOR_PRIVATE_KEY` server-side only.
 - **Testnet settlement** — MinIO and the facilitator run locally, but Hedera payments hit
   **testnet** (or mainnet if configured). The local Hedera fork is not used for x402.
+- **Native HashPack signing** — registry writes use `hedera_signAndExecuteTransaction`; x402
+  payments use `hedera_signTransaction` (partial sign). Both use the `hedera` WalletConnect
+  namespace — not wagmi / `eip155`.
+- **Marketplace listing** — `/files` reads `getFileCount` + `getFiles`, not `eth_getLogs`.
+  Hedera JSON-RPC limits log queries to a **7-day** window (timestamp-based “blocks”).
 - **Docker required** — `yarn infra:up` starts MinIO and the facilitator containers.
 - **Pin `@x402/hedera`** — the package is young; expect API churn across releases.
 - **No on-chain privacy** — transfer amounts, accounts, and settlement txs are public on Hedera.
