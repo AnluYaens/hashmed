@@ -1,14 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import {
-  clearWalletStorage,
-  getHederaAccountIdFromSession,
-  getHederaProvider,
-  hasHederaSession,
-  initAppKit,
-  resetAppKitSession,
-} from "./appKitHedera";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { getHederaAccountIdFromSession, getHederaProvider, hasHederaSession, initAppKit } from "./appKitHedera";
 import type { HederaProvider } from "@hashgraph/hedera-wallet-connect";
 import { hederaNamespace } from "@hashgraph/hedera-wallet-connect";
 import { useAppKitAccount, useDisconnect } from "@reown/appkit/react";
@@ -30,13 +23,14 @@ type HederaWalletConnectContextValue = {
 
 const HederaWalletConnectContext = createContext<HederaWalletConnectContextValue | undefined>(undefined);
 
-let _initPromise: Promise<HederaProvider> | null = null;
+let initPromise: Promise<HederaProvider> | null = null;
 
+/** Initialise AppKit + HederaProvider once for the page lifetime (AppKit is a module singleton). */
 function ensureInit(): Promise<HederaProvider> {
-  if (!_initPromise) {
-    _initPromise = initAppKit().then(() => getHederaProvider());
+  if (!initPromise) {
+    initPromise = initAppKit().then(() => getHederaProvider());
   }
-  return _initPromise;
+  return initPromise;
 }
 
 export const HederaWalletConnectProvider = ({ children }: { children: React.ReactNode }) => {
@@ -44,12 +38,11 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
   const [provider, setProvider] = useState<HederaProvider | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
-  const [forceDisconnected, setForceDisconnected] = useState(false);
+  /** Bumps when the WC provider session or AppKit account state changes. */
   const [sessionTick, setSessionTick] = useState(0);
   const { address: appKitHederaAddress, isConnected: appKitHederaConnected } = useAppKitAccount({
     namespace: hederaNamespace,
   });
-  const prevSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -73,99 +66,57 @@ export const HederaWalletConnectProvider = ({ children }: { children: React.Reac
       on?: (event: string, cb: () => void) => void;
       off?: (event: string, cb: () => void) => void;
     };
-    const onConnected = () => {
-      bump();
-      setForceDisconnected(false);
-    };
 
     if (typeof providerWithEvents.on === "function") {
-      providerWithEvents.on("session_update", onConnected);
+      providerWithEvents.on("session_update", bump);
       providerWithEvents.on("session_delete", bump);
-      providerWithEvents.on("connect", onConnected);
+      providerWithEvents.on("connect", bump);
       providerWithEvents.on("disconnect", bump);
     }
     return () => {
       if (typeof providerWithEvents.off === "function") {
-        providerWithEvents.off("session_update", onConnected);
+        providerWithEvents.off("session_update", bump);
         providerWithEvents.off("session_delete", bump);
-        providerWithEvents.off("connect", onConnected);
+        providerWithEvents.off("connect", bump);
         providerWithEvents.off("disconnect", bump);
       }
     };
   }, [provider]);
 
-  const connectWallet = useCallback(async () => Promise.resolve(), []);
+  useEffect(() => {
+    setSessionTick(t => t + 1);
+  }, [appKitHederaConnected, appKitHederaAddress]);
 
   const disconnectWallet = useCallback(async () => {
     if (isBusy) return;
-    const sessionKeyWhenDisconnecting = prevSessionKeyRef.current;
     setIsBusy(true);
     try {
-      try {
-        await disconnect({ namespace: hederaNamespace });
-      } catch {
-        // Continue to global disconnect fallback.
-      }
-      try {
-        await disconnect();
-      } catch {
-        // Continue to provider-level fallback.
-      }
-      const providerWithDisconnect = provider as unknown as {
-        disconnect?: (params?: unknown) => Promise<unknown>;
-      };
-      if (typeof providerWithDisconnect.disconnect === "function") {
-        try {
-          await providerWithDisconnect.disconnect({ namespace: hederaNamespace });
-        } catch {
-          try {
-            await providerWithDisconnect.disconnect();
-          } catch (error) {
-            console.warn("Provider disconnect fallback failed", error);
-          }
-        }
-      }
-
-      clearWalletStorage();
-      await resetAppKitSession();
-      _initPromise = null;
-      prevSessionKeyRef.current = sessionKeyWhenDisconnecting;
-      setForceDisconnected(true);
-
-      try {
-        const hp = await ensureInit();
-        setProvider(hp);
-      } catch (err) {
-        console.error("HederaWalletConnect re-init after disconnect failed", err);
-      }
+      await disconnect({ namespace: hederaNamespace });
+    } catch (error) {
+      console.error("HashPack disconnect failed", error);
     } finally {
+      setSessionTick(t => t + 1);
       setIsBusy(false);
     }
-  }, [isBusy, disconnect, provider]);
+  }, [isBusy, disconnect]);
 
-  const providerHasSession = Boolean(
-    sessionTick >= 0 && provider && (provider as unknown as { session?: unknown }).session,
-  );
+  const connectWallet = useCallback(async () => Promise.resolve(), []);
 
-  const sessionBlocked = forceDisconnected || !providerHasSession;
-  const sessionHederaAccountId = sessionBlocked ? null : getHederaAccountIdFromSession(provider);
-  const appKitHederaAccountId =
-    !sessionBlocked && appKitHederaConnected && appKitHederaAddress ? parseHederaAccountId(appKitHederaAddress) : null;
-  const hederaAccountId = sessionHederaAccountId ?? appKitHederaAccountId;
-  const hederaSessionReady = sessionBlocked ? false : hasHederaSession(provider);
+  const { hederaAccountId, hederaSessionReady, isConnected } = useMemo(() => {
+    void sessionTick;
 
-  useEffect(() => {
-    if (sessionBlocked) return;
-    const sessionKey = JSON.stringify({ hedera: sessionHederaAccountId });
-    if (forceDisconnected && sessionKey !== prevSessionKeyRef.current && sessionKey !== '{"hedera":null}') {
-      setForceDisconnected(false);
-    }
-    if (sessionKey !== '{"hedera":null}') {
-      prevSessionKeyRef.current = sessionKey;
-    }
-  }, [sessionBlocked, forceDisconnected, sessionHederaAccountId]);
+    const fromProvider = getHederaAccountIdFromSession(provider);
+    const fromAppKit = appKitHederaConnected && appKitHederaAddress ? parseHederaAccountId(appKitHederaAddress) : null;
+    const accountId = fromProvider ?? fromAppKit;
+    const sessionReady = hasHederaSession(provider);
+    const connected = Boolean(appKitHederaConnected && accountId);
 
-  const isConnected = Boolean(providerHasSession && !forceDisconnected && hederaSessionReady && !!hederaAccountId);
+    return {
+      hederaAccountId: accountId,
+      hederaSessionReady: sessionReady,
+      isConnected: connected,
+    };
+  }, [sessionTick, provider, appKitHederaConnected, appKitHederaAddress]);
 
   const value = useMemo<HederaWalletConnectContextValue>(
     () => ({

@@ -31,5 +31,13 @@ export const getParsedError = (error: any): string => {
     return parsedError.message ?? parsedError.name ?? "An unknown error occurred";
   }
 
+  if (parsedError && typeof parsedError === "object") {
+    const message = "message" in parsedError ? String(parsedError.message) : undefined;
+    if (message && message !== "undefined") return message;
+
+    const details = "details" in parsedError ? String(parsedError.details) : undefined;
+    if (details && details !== "undefined") return details;
+  }
+
   return parsedError?.message ?? "An unknown error occurred";
 };

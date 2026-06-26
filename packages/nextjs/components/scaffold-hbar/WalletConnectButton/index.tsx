@@ -17,11 +17,9 @@ export const WalletConnectButton = () => {
       <button
         className="btn btn-primary btn-sm"
         onClick={() => {
-          try {
-            open({ view: "Connect", namespace: hederaNamespace });
-          } catch (e) {
+          void open({ view: "Connect", namespace: hederaNamespace }).catch(e => {
             notification.error(getParsedError(e));
-          }
+          });
         }}
         disabled={isBusy}
         type="button"

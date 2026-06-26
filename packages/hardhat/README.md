@@ -52,19 +52,24 @@ You need a deployer account with HBAR on the target network. Without funds, depl
    ```
    You will be prompted to enter the password to decrypt your deployer key.
 
-4. **Verify on Hashscan** (uses deployment JSON under `deployments/<network>/`, which includes compiler metadata and sources):
+4. **Verify on Hashscan** (reads `deployments/<network>/` and submits to Sourcify):
    ```bash
-   yarn hardhat:verify:testnet   # all contracts on chain 296
-   yarn hardhat:verify:mainnet   # all contracts on chain 295
-   yarn workspace @sh/hardhat verify:contract -- HederaToken testnet
-   yarn workspace @sh/hardhat verify:contract -- HederaToken testnet 0xYourContractAddress
+   yarn hardhat:verify:testnet   # FileRegistry on chain 296
+   yarn hardhat:verify:mainnet   # FileRegistry on chain 295
+   ```
+   Requires a prior deploy on that network so `deployments/<network>/FileRegistry.json` exists.
+   Stale deployment JSON from other templates is skipped automatically.
+
+   To verify a single address manually:
+   ```bash
+   yarn workspace @sh/hardhat verify --network hederaTestnet 0xYourFileRegistryAddress
    ```
 
 ## Layout
 
 - `contracts/` — Solidity sources
-- `deploy/` — hardhat-deploy scripts (e.g. `00_deploy_hedera_token.ts`)
-- `scripts/` — generateAccount, importAccount, verifyHedera.js, etc.
+- `deploy/` — hardhat-deploy scripts (e.g. `00_deploy_file_registry.ts`)
+- `scripts/` — generateAccount, importAccount, verifyDeployed, etc.
 - `test/` — contract tests
 - `hardhat.config.ts` — networks (`hardhat`, `localhost` for RPC at 127.0.0.1:8545, `hederaTestnet`, `hederaMainnet`)
 
