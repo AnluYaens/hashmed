@@ -8,11 +8,11 @@ Proof of real x402 payments settling on Hedera testnet. All transactions below a
 
 ## Settled x402 payments
 
-| #                                                                                       | Description                                                                                                           | Transaction                                                                            |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 1                                                                                       | First end-to-end pay-per-read: buyer paid 1 HBAR via HTTP 402 → facilitator co-signed and settled → download unlocked | [`1785413554.921013104`](https://hashscan.io/testnet/transaction/1785413554.921013104) |
-| 2                                                                                       | Pay-per-read of a synthetic CBC report (0.001 HBAR) through the HashMed UI                                            |
-| [`1785416899.380741104`] (https://hashscan.io/testnet/transaction/1785416899.380741104) |
+| #   | Description                                                                                                                                          | Transaction                                                                            |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1   | First end-to-end pay-per-read: buyer paid 1 HBAR via HTTP 402 → facilitator co-signed and settled → download unlocked                                | [`1785413554.921013104`](https://hashscan.io/testnet/transaction/1785413554.921013104) |
+| 2   | Pay-per-read of a synthetic CBC report (0.001 HBAR) through the HashMed UI                                                                           | [`1785416899.380741104`](https://hashscan.io/testnet/transaction/1785416899.380741104) |
+| 3   | Agent-initiated payment: the bundled `yarn x402:buy` Node script paid 0.001 HBAR and downloaded the report machine-to-machine — no browser, no human | [`1785432372.855648259`](https://hashscan.io/testnet/transaction/1785432372.855648259) |
 
 ## Accounts (roles)
 
