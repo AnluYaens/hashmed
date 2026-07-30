@@ -12,7 +12,7 @@ Built for the [Hedera x402 bounty](https://hedera.com/x402-bounty) · Demo video
 | First end-to-end x402 settlement (1 HBAR)           | [HashScan ✓ SUCCESS](https://hashscan.io/testnet/transaction/1785413554.921013104) |
 | Pay-per-read of a synthetic CBC report (0.001 HBAR) | [HashScan ✓ SUCCESS](https://hashscan.io/testnet/transaction/1785416899.380741104) |
 
-More settlements and account roles in [EVIDENCE.md](./EVIDENCE.md). Every transaction is real and verifiable.
+More settlements and account roles in [EVIDENCE.md](./EVIDENCE.md).
 
 ## The problem
 
@@ -49,33 +49,43 @@ Lab (publisher)                    Clinic / patient (buyer)              Facilit
 
 ## Synthetic data only
 
-Every report in this demo is fabricated. PDFs are generated in-repo (`yarn samples`), watermarked **"SYNTHETIC — NOT A REAL PATIENT RECORD"**, and identified only by pseudonyms (`SYN-4821`). The UI enforces pseudonym patterns and shows a permanent synthetic-data banner. Nothing here is PHI and nothing is for clinical use.
+Every report in this demo is fabricated. PDFs are generated in-repo (`yarn workspace @sh/nextjs samples`), watermarked **"SYNTHETIC — NOT A REAL PATIENT RECORD"**, and identified only by pseudonyms (`SYN-4821`). The UI enforces pseudonym patterns and shows a permanent synthetic-data banner. Nothing here is PHI and nothing is for clinical use.
 
 ## Run it locally
 
-Prereqs: Node 20 LTS, Docker, a funded **ECDSA** Hedera testnet account ([portal.hedera.com](https://portal.hedera.com)), HashPack extension, a WalletConnect project ID.
+Prereqs: Node 20 LTS, Docker, the HashPack extension, a WalletConnect project ID ([cloud.reown.com](https://cloud.reown.com)).
+
+### Account setup (5 minutes, one-time)
+
+x402's exact scheme rejects self-transfers and any payment the fee payer takes part in — by design, not an app limitation — so the demo needs **three distinct** testnet accounts:
+
+1. **Buyer** — create an **ECDSA** account at [portal.hedera.com](https://portal.hedera.com) (it arrives funded) and import it into HashPack. Its key also deploys the contract below.
+2. **Facilitator (fee payer)** — generate a fresh ECDSA keypair and send ~20 HBAR from the buyer to its EVM address; Hedera auto-creates the account. Put the new `0.0.x` id and private key in the root `.env`.
+3. **Payout (the "lab")** — generate one more keypair and send it a few HBAR the same way. It only receives payments: no wallet, no further funding.
+
+### Deploy and run
 
 ```bash
 corepack enable && yarn install
 
 # configure
-cp .env.example .env                                # facilitator account (ECDSA)
+cp .env.example .env                                 # facilitator id + key (account 2)
 cp packages/nextjs/.env.example packages/nextjs/.env # WalletConnect project ID
 
 # deploy + run
-yarn hardhat:account:import
+yarn hardhat:account:import                          # buyer key (account 1) as deployer
 yarn hardhat:deploy --network hederaTestnet
 yarn infra:up          # MinIO + self-hosted x402 facilitator (Docker)
 yarn next:dev          # http://localhost:3000
 
 # production mode (note: `yarn next:start` runs the dev server in this template)
-yarn next:build && yarn workspace @sh/nextjs serve
+yarn next:build && yarn next:serve
 
 # verify
 yarn hardhat:test      # 30 passing
 ```
 
-Full setup details in [RUNBOOK.md](./RUNBOOK.md). Use **three distinct accounts** (buyer / payout / facilitator) — x402's exact scheme rejects self-transfers and fee-payer participation by design.
+Full setup details in [RUNBOOK.md](./RUNBOOK.md).
 
 ## What's ours vs. the template
 
@@ -89,7 +99,7 @@ The Solidity `FileRegistry` contract is **unchanged from the template** — deli
 
 ## Why Hedera
 
-Fixed, predictable sub-cent fees make per-read pricing viable — charging $0.0001 with variable gas would be impossible. Settlement finality in seconds means the "pay → unlock" moment feels instant in the UI. And native transactions + HashScan give both sides an audit trail for free.
+Fixed, predictable sub-cent fees make per-read pricing viable. Settlement finality in seconds means the "pay → unlock" moment feels instant in the UI. And native transactions plus HashScan give both sides an audit trail for free.
 
 ## Author
 
