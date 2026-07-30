@@ -6,16 +6,9 @@ import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { ArrowUpTrayIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import { PAY_PER_READ_STEPS } from "~~/components/hashmed/PayPerReadSteps";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
-
-/** The four steps a paid read goes through, shown on the landing page. */
-const PAY_PER_READ_STEPS = [
-  { step: "1", title: "Request", body: "A clinic asks for a restricted lab report." },
-  { step: "2", title: "402", body: "HashMed answers HTTP 402 with the price in HBAR." },
-  { step: "3", title: "Sign", body: "HashPack partially signs; the facilitator co-signs as fee payer." },
-  { step: "4", title: "Unlock", body: "Hedera settles in seconds and a one-off link opens the report." },
-];
 
 const Home: NextPage = () => {
   const { address: connectedAddress, status } = useAccount();
@@ -107,9 +100,9 @@ const Home: NextPage = () => {
               No account, no subscription — the payment is the access control.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {PAY_PER_READ_STEPS.map(({ step, title, body }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <span className="font-bold text-primary text-lg leading-none mt-0.5">{step}</span>
+              {PAY_PER_READ_STEPS.map(({ key, title, body }, index) => (
+                <div key={key} className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg leading-none mt-0.5">{index + 1}</span>
                   <div>
                     <p className="m-0 font-medium text-sm">{title}</p>
                     <p className="m-0 text-xs text-base-content/60">{body}</p>

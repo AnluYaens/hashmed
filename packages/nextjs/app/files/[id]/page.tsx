@@ -11,6 +11,8 @@ import {
   LockClosedIcon,
   LockOpenIcon,
 } from "@heroicons/react/24/outline";
+import { PayPerReadSteps } from "~~/components/hashmed/PayPerReadSteps";
+import { PaymentReceipt } from "~~/components/hashmed/PaymentReceipt";
 import { ReportTypeBadge, SyntheticBadge } from "~~/components/hashmed/ReportBadges";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import {
@@ -49,10 +51,14 @@ const ReportDetail: NextPage = () => {
   const [statusLoad, setStatusLoad] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [receipt, setReceipt] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<{ transaction: string; payer?: string } | null>(null);
+  const [payState, setPayState] = useState<"idle" | "paying" | "unlocked">("idle");
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
   const registryHederaContractId = getFileRegistryHederaContractId(targetNetwork.id);
   const isOwner = !!ownerEvmAddress && !!file && ownerEvmAddress.toLowerCase() === file.owner.toLowerCase();
+  // A transfer aggregates per account, so buying your own report nets to zero and the
+  // facilitator rejects it before settlement.
+  const isSelfPayout = !!hederaAccountId && !!file && hederaAccountId === file.payToAccountId;
 
   // Medical metadata is encoded into the registry `name` (the contract has no
   // dedicated columns for it), so decode it for display.
@@ -115,6 +121,7 @@ const ReportDetail: NextPage = () => {
     }
     setDownloading(true);
     setReceipt(null);
+    setPayState("paying");
     const toastId = notification.loading("Signing x402 payment…");
     try {
       const result = await payAndGetDownloadUrl({
@@ -123,11 +130,15 @@ const ReportDetail: NextPage = () => {
       });
       notification.remove(toastId);
       notification.success("Payment settled — report unlocked");
-      if (result.transaction) setReceipt(result.transaction);
+      // Left at "unlocked" on purpose: the settled steps and the receipt stay on screen
+      // once the download starts.
+      setPayState("unlocked");
+      if (result.transaction) setReceipt({ transaction: result.transaction, payer: result.payer });
       openUrl(result.url);
     } catch (e) {
       notification.remove(toastId);
       notification.error(getParsedError(e));
+      setPayState("idle");
     } finally {
       setDownloading(false);
     }
@@ -242,10 +253,19 @@ const ReportDetail: NextPage = () => {
                   HashPack did not provide a Hedera account ID. Make sure your wallet supports the Hedera namespace.
                 </span>
               )}
+              {isSelfPayout && (
+                <span className="text-xs text-center text-warning">
+                  This report pays out to the account you&apos;re connected with. Hedera nets a self-transfer to zero,
+                  so the facilitator will reject it — connect a different account to pay for this read.
+                </span>
+              )}
+              <PayPerReadSteps state={payState} />
             </div>
           )}
 
-          {receipt && <p className="text-xs text-center text-success mt-3 m-0 break-all">Settled · tx {receipt}</p>}
+          {receipt && (
+            <PaymentReceipt transactionId={receipt.transaction} payer={receipt.payer} chainId={targetNetwork.id} />
+          )}
         </div>
       </div>
 
