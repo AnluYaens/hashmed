@@ -20,7 +20,7 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
-    label: "Reports",
+    label: "Exchange",
     href: "/files",
     icon: <DocumentTextIcon className="h-4 w-4" />,
   },
@@ -82,12 +82,9 @@ export const Header = () => {
             <HeaderMenuLinks />
           </ul>
         </details>
-        <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
-          <div className="flex relative w-9 h-9">
-            <Image alt="Hedera icon" className="cursor-pointer dark:hidden" fill src="/Hedera-Icon-Dark.svg" />
-            <Image alt="Hedera icon" className="cursor-pointer hidden dark:block" fill src="/Hedera-Icon-White.svg" />
-          </div>
-          <div className="flex flex-col">
+        <Link href="/" passHref className="flex items-center gap-3 ml-2 lg:ml-4 mr-2 lg:mr-6 shrink-0">
+          <Image alt="HashMed" className="cursor-pointer shrink-0" width={36} height={36} src="/hashmed-mark.svg" />
+          <div className="hidden sm:flex flex-col">
             <span className="font-bold leading-tight text-base">HashMed</span>
             <span className="text-[10px] tracking-wider uppercase text-base-content/50 font-medium">
               Pay-per-read lab results

@@ -57,9 +57,9 @@ const Marketplace: NextPage = () => {
     <div className="flex flex-col grow w-full max-w-5xl mx-auto px-5 py-10">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold m-0">Lab Report Exchange</h1>
-          <p className="text-base-content/60 m-0 mt-1">
-            Open-access reports read for free. Restricted reports cost one micro-payment in HBAR per read.
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight m-0">Lab Report Exchange</h1>
+          <p className="text-sm sm:text-base text-base-content/60 m-0 mt-1.5 max-w-2xl">
+            Open-access reports read for free. Pay-per-read reports cost one HBAR micro-payment per read.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -106,25 +106,28 @@ const Marketplace: NextPage = () => {
       )}
 
       {registryMissing && (
-        <div className="alert alert-warning">
-          <span>
+        <div className="bg-warning/10 border border-warning/25 rounded-xl px-4 py-3">
+          <span className="text-sm">
             FileRegistry is not deployed on {targetNetwork.name}. Deploy with{" "}
-            <code className="text-xs">yarn hardhat:deploy --network hederaTestnet</code> first.
+            <code className="text-xs bg-base-200 px-1.5 py-0.5 rounded">
+              yarn hardhat:deploy --network hederaTestnet
+            </code>{" "}
+            first.
           </span>
         </div>
       )}
 
       {isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-44 rounded-2xl bg-base-200 animate-pulse" />
+            <div key={i} className="h-48 rounded-2xl bg-base-200 animate-pulse" />
           ))}
         </div>
       )}
 
       {!isLoading && loadFailed && (
-        <div className="alert alert-warning">
-          <span>{error?.message ?? "Failed to load reports from the registry"}</span>
+        <div className="bg-error/10 border border-error/25 rounded-xl px-4 py-3">
+          <span className="text-sm">{error?.message ?? "Failed to load reports from the registry"}</span>
         </div>
       )}
 
@@ -144,63 +147,60 @@ const Marketplace: NextPage = () => {
       )}
 
       {!isLoading && !loadFailed && visibleReports.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {visibleReports.map(file => (
             <article
               key={file.fileId}
-              className="bg-base-100 border border-base-300 rounded-2xl p-5 flex flex-col gap-3"
+              className="group bg-base-100 border border-base-300 rounded-2xl flex flex-col transition-colors hover:border-primary/40"
             >
-              <Link
-                href={`/files/${file.fileId}`}
-                className="flex flex-col gap-3 flex-1 hover:opacity-90 transition-opacity"
-              >
+              <Link href={`/files/${file.fileId}`} className="flex flex-col gap-3 flex-1 p-5">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <ReportTypeBadge code={file.report.reportType} />
-                  <SyntheticBadge />
-                  <span className="grow" />
                   {file.isPublic ? (
                     <span className="badge badge-success badge-sm gap-1 shrink-0">
-                      <LockOpenIcon className="h-3 w-3" /> Open
+                      <LockOpenIcon className="h-3 w-3" /> Open access
                     </span>
                   ) : (
-                    <span className="badge badge-secondary badge-sm gap-1 shrink-0">
-                      <LockClosedIcon className="h-3 w-3" /> Restricted
+                    <span className="badge badge-primary badge-sm badge-outline gap-1 shrink-0">
+                      <LockClosedIcon className="h-3 w-3" /> Pay per read
                     </span>
                   )}
+                  <ReportTypeBadge code={file.report.reportType} />
+                  <SyntheticBadge />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <span className="font-semibold break-words line-clamp-2">{file.report.title}</span>
-                  {(file.report.specimenDate || file.report.patientPseudonym) && (
-                    <span className="text-xs text-base-content/50">
-                      {[formatSpecimenDate(file.report.specimenDate), file.report.patientPseudonym]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  )}
+                <div className="flex flex-col gap-1 flex-1">
+                  <span className="font-semibold leading-snug break-words line-clamp-2 transition-colors group-hover:text-primary">
+                    {file.report.title}
+                  </span>
+                  {/* Always rendered so every card's footer lands on the same baseline. */}
+                  <span className="text-xs text-base-content/50 min-h-4">
+                    {[formatSpecimenDate(file.report.specimenDate), file.report.patientPseudonym]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
                 </div>
 
-                <div className="mt-auto pt-2 border-t border-base-200">
+                <div className="mt-auto pt-3 border-t border-base-200 flex flex-col gap-1">
                   {file.isPublic ? (
                     <span className="text-sm font-medium text-success">Free read</span>
                   ) : (
                     <span className="text-sm font-medium">{formatTinybar(file.priceTinybar)} HBAR / read</span>
                   )}
+                  <span className="flex items-baseline gap-1.5 min-w-0 text-xs">
+                    <span className="shrink-0 text-base-content/50">Issuing lab</span>
+                    {file.report.labName ? (
+                      <span className="truncate text-base-content/80">{file.report.labName}</span>
+                    ) : (
+                      <span
+                        className="truncate text-base-content/40 italic"
+                        title="Registered without HashMed metadata — the issuing lab is not recorded on-chain."
+                      >
+                        {file.report.isStructured ? "Lab not disclosed" : "Unknown lab (legacy listing)"}
+                      </span>
+                    )}
+                  </span>
                 </div>
               </Link>
-              <div className="text-xs text-base-content/60 border-t border-base-200 pt-2">
-                <span className="text-base-content/50">Issuing lab </span>
-                {file.report.labName ? (
-                  <span className="text-base-content/80 break-words line-clamp-1">{file.report.labName}</span>
-                ) : (
-                  <span
-                    className="text-base-content/40 italic"
-                    title="Registered without HashMed metadata — the issuing lab is not recorded on-chain."
-                  >
-                    {file.report.isStructured ? "Lab not disclosed" : "Unknown lab (legacy listing)"}
-                  </span>
-                )}
-              </div>
             </article>
           ))}
         </div>

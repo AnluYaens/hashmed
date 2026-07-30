@@ -43,8 +43,13 @@ export const getMetadata = ({
       description: description,
       images: [imageUrl],
     },
+    manifest: "/manifest.json",
     icons: {
-      icon: [{ url: "/favicon.png", sizes: "32x32", type: "image/png" }],
+      icon: [
+        { url: "/hashmed-mark.svg", type: "image/svg+xml" },
+        { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      ],
+      apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     },
   };
 };

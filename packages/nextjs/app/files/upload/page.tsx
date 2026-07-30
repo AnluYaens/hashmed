@@ -258,17 +258,22 @@ const PublishReport: NextPage = () => {
 
   return (
     <div className="flex flex-col grow w-full max-w-2xl mx-auto px-5 py-10">
-      <h1 className="text-3xl font-bold m-0 mb-1">Publish a lab report</h1>
-      <p className="text-base-content/60 m-0 mb-8">
+      <h1 className="text-3xl sm:text-4xl font-bold tracking-tight m-0">Publish a lab report</h1>
+      <p className="text-sm sm:text-base text-base-content/60 m-0 mt-1.5 mb-8 max-w-2xl">
         The document goes to private storage. Its metadata, price per read, and access mode are registered on-chain, so
         the payment itself is what unlocks a read.
       </p>
 
       {!registryAddress && (
-        <div className="alert alert-warning mb-6">
-          <span>
-            FileRegistry is not deployed on {targetNetwork.name}. Run <code>yarn deploy</code> (or set{" "}
-            <code>NEXT_PUBLIC_FILE_REGISTRY_ADDRESS</code>) and reload.
+        <div className="bg-warning/10 border border-warning/25 rounded-xl px-4 py-3 mb-6">
+          <span className="text-sm">
+            FileRegistry is not deployed on {targetNetwork.name}. Run{" "}
+            <code className="text-xs bg-base-200 px-1.5 py-0.5 rounded">
+              yarn hardhat:deploy --network hederaTestnet
+            </code>{" "}
+            — or set{" "}
+            <code className="text-xs bg-base-200 px-1.5 py-0.5 rounded">NEXT_PUBLIC_FILE_REGISTRY_ADDRESS</code> — and
+            reload.
           </span>
         </div>
       )}
@@ -287,7 +292,7 @@ const PublishReport: NextPage = () => {
               <button
                 key={sample.id}
                 type="button"
-                className="btn btn-outline btn-xs"
+                className="btn btn-outline btn-sm"
                 disabled={loadingSample || busy}
                 onClick={() => void handleSample(sample.id)}
               >
@@ -371,6 +376,7 @@ const PublishReport: NextPage = () => {
               type="button"
               className="btn btn-outline join-item"
               onClick={() => setPatientPseudonym(randomPatientPseudonym())}
+              aria-label="Generate a new patient pseudonym"
             >
               New
             </button>

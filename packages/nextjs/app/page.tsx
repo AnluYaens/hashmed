@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { ArrowUpTrayIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
@@ -18,138 +17,95 @@ const Home: NextPage = () => {
   const isConnected = status === "connected" && connectedAddress;
 
   return (
-    <>
-      <div className="flex items-center flex-col grow">
-        <div className="hedera-gradient dark:bg-none dark:bg-hedera-charcoal w-full py-16 px-5">
-          <div className="flex flex-col items-center max-w-3xl mx-auto text-center">
-            <Image
-              src="/Hedera-Icon-White.svg"
-              alt="Hedera icon"
-              width={64}
-              height={64}
-              className="mb-6 hidden dark:block"
-            />
-            <Image src="/Hedera-Icon-Dark.svg" alt="Hedera icon" width={64} height={64} className="mb-6 dark:hidden" />
-            <h1 className="text-4xl sm:text-5xl font-bold text-white m-0 mb-3">HashMed</h1>
-            <p className="text-lg sm:text-xl text-white/90 m-0 max-w-2xl">
-              Pay-per-read medical lab results. A lab publishes a report; a clinic pays a fraction of a cent in HBAR to
-              unlock exactly one read.
-            </p>
-            <span className="mt-5 block text-xs font-medium tracking-widest uppercase text-white/70">
-              Settled on Hedera · x402 · Synthetic data only
-            </span>
-          </div>
-        </div>
-
-        <div className="w-full max-w-4xl mx-auto px-5 -mt-8">
-          <div className="bg-base-100 rounded-2xl shadow-lg p-8">
-            {isReconnecting ? (
-              <div className="flex flex-col items-center gap-2">
-                <p className="font-semibold text-sm text-base-content/60 uppercase tracking-wider m-0">Connecting…</p>
-                <div className="h-8 w-48 rounded bg-base-200 animate-pulse" aria-hidden />
-              </div>
-            ) : isConnected ? (
-              <div className="flex flex-col items-center gap-2">
-                <p className="font-semibold text-sm text-base-content/60 uppercase tracking-wider m-0">
-                  Connected Address
-                </p>
-                <HederaAddress address={connectedAddress} chain={targetNetwork} />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <p className="font-semibold text-sm text-base-content/60 uppercase tracking-wider m-0">
-                  Connect HashPack to publish or pay for a report
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="w-full max-w-4xl mx-auto px-5 mt-8 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
-              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
-                <DocumentTextIcon className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Browse lab reports</h3>
-              <p className="text-base-content/70 text-sm m-0 mb-6">
-                Open-access reports read for free. Restricted reports unlock per read against an x402 HBAR payment.
-              </p>
-              <Link href="/files" passHref className="btn btn-primary btn-sm">
-                Open the exchange
-              </Link>
-            </div>
-
-            <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
-              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
-                <ArrowUpTrayIcon className="h-7 w-7 text-white" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Publish as a lab</h3>
-              <p className="text-base-content/70 text-sm m-0 mb-6">
-                Register a report on-chain with its price per read; the document itself stays in private storage.
-              </p>
-              <Link href="/files/upload" passHref className="btn btn-primary btn-sm">
-                Publish a report
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-8 bg-base-100 rounded-2xl shadow-md p-8 border border-base-300">
-            <h3 className="font-bold text-lg mb-1 text-center">How one paid read works</h3>
-            <p className="text-sm text-base-content/60 text-center m-0 mb-6">
-              No account, no subscription — the payment is the access control.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {PAY_PER_READ_STEPS.map(({ key, title, body }, index) => (
-                <div key={key} className="flex items-start gap-3">
-                  <span className="font-bold text-primary text-lg leading-none mt-0.5">{index + 1}</span>
-                  <div>
-                    <p className="m-0 font-medium text-sm">{title}</p>
-                    <p className="m-0 text-xs text-base-content/60">{body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8 bg-base-100 rounded-2xl shadow-md p-8 border border-base-300">
-            <h3 className="font-bold text-lg mb-4 text-center">Run it locally</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-start gap-3">
-                <span className="font-bold text-primary text-lg leading-none mt-0.5">1</span>
-                <div>
-                  <p className="m-0 font-medium">Start local infra</p>
-                  <code className="text-xs bg-base-200 px-2 py-1 rounded">yarn infra:up</code>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-bold text-primary text-lg leading-none mt-0.5">2</span>
-                <div>
-                  <p className="m-0 font-medium">Deploy FileRegistry</p>
-                  <code className="text-xs bg-base-200 px-2 py-1 rounded">
-                    yarn hardhat:deploy --network hederaTestnet
-                  </code>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-bold text-primary text-lg leading-none mt-0.5">3</span>
-                <div>
-                  <p className="m-0 font-medium">Get testnet HBAR</p>
-                  <HederaPortalFaucet variant="link" label="portal.hedera.com/faucet" showIcon={false} />
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="font-bold text-primary text-lg leading-none mt-0.5">4</span>
-                <div>
-                  <p className="m-0 font-medium">Run the app</p>
-                  <code className="text-xs bg-base-200 px-2 py-1 rounded">yarn next:dev</code>
-                </div>
-              </div>
-            </div>
+    <div className="flex items-center flex-col grow">
+      <div className="hedera-gradient dark:bg-none dark:bg-hedera-charcoal w-full px-5 pt-16 pb-24">
+        <div className="flex flex-col items-center max-w-3xl mx-auto text-center">
+          <Image src="/hashmed-mark.svg" alt="" width={56} height={56} priority className="mb-6 shadow-lg" />
+          <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-white/70">
+            Settled on Hedera · x402 · Synthetic data only
+          </span>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white m-0 mt-3">HashMed</h1>
+          <p className="text-lg sm:text-xl leading-relaxed text-balance text-white/85 m-0 mt-4 max-w-xl">
+            A lab publishes a report; a clinic unlocks exactly one read for a fraction of a cent in HBAR.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-8">
+            <Link href="/files" className="btn btn-lg border-0 bg-white text-primary hover:bg-white/90">
+              Browse the exchange
+            </Link>
+            <Link
+              href="/files/upload"
+              className="btn btn-lg border border-white/50 bg-transparent text-white shadow-none hover:border-white hover:bg-white/10"
+            >
+              Publish a report
+            </Link>
           </div>
         </div>
       </div>
-    </>
+
+      <div className="w-full max-w-4xl mx-auto px-5 -mt-8">
+        <div className="bg-base-100 border border-base-300 rounded-2xl shadow-lg p-6">
+          {isReconnecting ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-base-content/50 m-0">Connecting…</p>
+              <div className="h-8 w-48 rounded bg-base-200 animate-pulse" aria-hidden />
+            </div>
+          ) : isConnected ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-base-content/50 m-0">Connected account</p>
+              <HederaAddress address={connectedAddress} chain={targetNetwork} />
+            </div>
+          ) : (
+            <p className="text-xs font-medium uppercase tracking-wide text-base-content/50 text-center m-0">
+              Connect HashPack to publish or pay for a report
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="w-full max-w-4xl mx-auto px-5 mt-10 pb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="bg-base-100 border border-base-300 rounded-2xl p-8 text-center flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <DocumentTextIcon className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="font-bold text-lg m-0 mb-2">Browse lab reports</h2>
+            <p className="text-base-content/70 text-sm leading-relaxed m-0">
+              Open-access reports read for free. Pay-per-read reports unlock against an x402 HBAR payment.
+            </p>
+          </div>
+
+          <div className="bg-base-100 border border-base-300 rounded-2xl p-8 text-center flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <ArrowUpTrayIcon className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="font-bold text-lg m-0 mb-2">Publish as a lab</h2>
+            <p className="text-base-content/70 text-sm leading-relaxed m-0">
+              Register a report on-chain with its price per read; the document itself stays in private storage.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 bg-base-100 border border-base-300 rounded-2xl p-8">
+          <h2 className="font-bold text-lg text-center m-0 mb-1">How one paid read works</h2>
+          <p className="text-sm text-base-content/60 text-center m-0 mb-6">
+            No account, no subscription — the payment is the access control.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {PAY_PER_READ_STEPS.map(({ key, title, body }, index) => (
+              <div key={key} className="flex items-start gap-3">
+                <span className="w-6 h-6 shrink-0 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+                  {index + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="m-0 font-medium text-sm">{title}</p>
+                  <p className="m-0 text-xs leading-relaxed text-base-content/60">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

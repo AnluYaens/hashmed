@@ -146,7 +146,7 @@ const ReportDetail: NextPage = () => {
 
   if (statusLoad === "loading") {
     return (
-      <div className="w-full max-w-3xl mx-auto px-5 py-10">
+      <div className="flex flex-col grow w-full max-w-3xl mx-auto px-5 py-10">
         <div className="h-48 rounded-2xl bg-base-200 animate-pulse" />
       </div>
     );
@@ -154,40 +154,41 @@ const ReportDetail: NextPage = () => {
 
   if (statusLoad === "error" || !file || !report) {
     return (
-      <div className="w-full max-w-3xl mx-auto px-5 py-10">
+      <div className="flex flex-col grow w-full max-w-3xl mx-auto px-5 py-10">
         <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
           <ArrowLeftIcon className="h-4 w-4" /> Exchange
         </Link>
-        <div className="alert alert-warning">
-          <span>{message}</span>
+        <div className="bg-error/10 border border-error/25 rounded-xl px-4 py-3">
+          <span className="text-sm">{message}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-5 py-10">
-      <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
+    <div className="flex flex-col grow w-full max-w-3xl mx-auto px-5 py-10">
+      <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6 self-start">
         <ArrowLeftIcon className="h-4 w-4" /> Exchange
       </Link>
 
       <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <ReportTypeBadge code={report.reportType} />
-            <SyntheticBadge />
-            <span className="grow" />
             {file.isPublic ? (
-              <span className="badge badge-success gap-1 shrink-0">
+              <span className="badge badge-success badge-sm gap-1 shrink-0">
                 <LockOpenIcon className="h-3 w-3" /> Open access
               </span>
             ) : (
-              <span className="badge badge-secondary gap-1 shrink-0">
+              <span className="badge badge-primary badge-sm badge-outline gap-1 shrink-0">
                 <LockClosedIcon className="h-3 w-3" /> Pay per read
               </span>
             )}
+            <ReportTypeBadge code={report.reportType} />
+            <SyntheticBadge />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold m-0 min-w-0 break-words leading-snug">{report.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight m-0 min-w-0 break-words leading-snug">
+            {report.title}
+          </h1>
           {!report.isStructured && (
             <p className="text-xs text-base-content/50 m-0">
               Registered without HashMed metadata — only the report name is available.
@@ -406,16 +407,16 @@ const LabControls = ({
           <input
             type="text"
             inputMode="decimal"
-            className="input input-bordered join-item w-full"
+            className="input input-bordered input-sm join-item w-full"
             value={priceHbar}
             onChange={e => setPriceHbar(e.target.value)}
             aria-label="New price per read in HBAR"
           />
-          <button className="btn btn-outline join-item" disabled={busy !== null} onClick={updatePrice}>
+          <button className="btn btn-outline btn-sm join-item" disabled={busy !== null} onClick={updatePrice}>
             {busy === "price" ? <span className="loading loading-spinner loading-sm" /> : "Set price"}
           </button>
         </div>
-        <button className="btn btn-outline" disabled={busy !== null} onClick={toggleVisibility}>
+        <button className="btn btn-outline btn-sm" disabled={busy !== null} onClick={toggleVisibility}>
           {busy === "visibility" ? (
             <span className="loading loading-spinner loading-sm" />
           ) : file.isPublic ? (

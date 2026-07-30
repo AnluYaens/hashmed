@@ -1,3 +1,7 @@
+/* @import rules must come first, or the browser drops them and the Montserrat fallback never loads. */
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
 /* Styrene A Web – Hedera brand font (fallback: Montserrat per brand.hedera.com) */
 @font-face {
   font-family: "Styrene A Web";
@@ -8,8 +12,6 @@
   font-style: normal;
   font-display: swap;
 }
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap");
-@import "tailwindcss";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
@@ -48,9 +50,11 @@
   --color-base-300: #e8e8ec;
   --color-base-content: #11151d;
   --color-info: #2d84eb;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  /* Darkened against #ffffff — the mint/amber pair used by the dark theme reads at ~1.6:1 here,
+     and success/warning/error all carry text (prices, caution hints, validation). */
+  --color-success: #047857;
+  --color-warning: #a16207;
+  --color-error: #c2410c;
 
   --radius-field: 9999rem;
   --radius-box: 1rem;

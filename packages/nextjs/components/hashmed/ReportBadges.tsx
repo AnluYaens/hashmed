@@ -9,7 +9,7 @@ import { reportTypeLabel } from "~~/utils/hashmed/reportMetadata";
 export const ReportTypeBadge = ({ code }: { code: string }) => {
   if (!code) return null;
   return (
-    <span className="badge badge-outline badge-sm font-semibold tracking-wide shrink-0" title={reportTypeLabel(code)}>
+    <span className="badge badge-ghost badge-sm font-semibold tracking-wide shrink-0" title={reportTypeLabel(code)}>
       {code}
     </span>
   );

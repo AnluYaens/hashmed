@@ -40,7 +40,7 @@ export const ScaffoldHbarAppWithProviders = ({ children }: { children: React.Rea
     <WagmiProvider config={wagmiConfig as Config} reconnectOnMount={false}>
       <QueryClientProvider client={queryClient}>
         <HederaWalletConnectProvider>
-          <ProgressBar height="3px" color="#2299dd" />
+          <ProgressBar height="3px" color="#4f46e5" />
           <ScaffoldHbarApp>{children}</ScaffoldHbarApp>
         </HederaWalletConnectProvider>
       </QueryClientProvider>
