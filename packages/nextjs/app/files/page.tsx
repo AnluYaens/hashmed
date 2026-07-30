@@ -5,7 +5,6 @@ import Link from "next/link";
 import type { NextPage } from "next";
 import { ArrowPathIcon, ArrowUpTrayIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 import { ReportTypeBadge, SyntheticBadge } from "~~/components/hashmed/ReportBadges";
-import { HederaAddress } from "~~/components/scaffold-hbar";
 import { getFileRegistryAddress } from "~~/contracts/fileRegistryAbi";
 import { useRegistryFileListing, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { decodeReportName, formatSpecimenDate, reportTypeLabel } from "~~/utils/hashmed/reportMetadata";
@@ -172,9 +171,6 @@ const Marketplace: NextPage = () => {
 
                 <div className="flex flex-col gap-1">
                   <span className="font-semibold break-words line-clamp-2">{file.report.title}</span>
-                  <span className="text-xs text-base-content/60 break-words line-clamp-1">
-                    {file.report.labName || file.mimeType}
-                  </span>
                   {(file.report.specimenDate || file.report.patientPseudonym) && (
                     <span className="text-xs text-base-content/50">
                       {[formatSpecimenDate(file.report.specimenDate), file.report.patientPseudonym]
@@ -194,7 +190,16 @@ const Marketplace: NextPage = () => {
               </Link>
               <div className="text-xs text-base-content/60 border-t border-base-200 pt-2">
                 <span className="text-base-content/50">Issuing lab </span>
-                <HederaAddress address={file.owner} chain={targetNetwork} disableAddressLink />
+                {file.report.labName ? (
+                  <span className="text-base-content/80 break-words line-clamp-1">{file.report.labName}</span>
+                ) : (
+                  <span
+                    className="text-base-content/40 italic"
+                    title="Registered without HashMed metadata — the issuing lab is not recorded on-chain."
+                  >
+                    {file.report.isStructured ? "Lab not disclosed" : "Unknown lab (legacy listing)"}
+                  </span>
+                )}
               </div>
             </article>
           ))}
