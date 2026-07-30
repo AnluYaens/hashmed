@@ -8,18 +8,20 @@ Proof of real x402 payments settling on Hedera testnet. All transactions below a
 
 ## Settled x402 payments
 
-| # | Description | Transaction |
-|---|-------------|-------------|
-| 1 | First end-to-end pay-per-read: buyer paid 1 HBAR via HTTP 402 → facilitator co-signed and settled → download unlocked | [`1785413554.921013104`](https://hashscan.io/testnet/transaction/1785413554.921013104) |
+| #                                                                                       | Description                                                                                                           | Transaction                                                                            |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1                                                                                       | First end-to-end pay-per-read: buyer paid 1 HBAR via HTTP 402 → facilitator co-signed and settled → download unlocked | [`1785413554.921013104`](https://hashscan.io/testnet/transaction/1785413554.921013104) |
+| 2                                                                                       | Pay-per-read of a synthetic CBC report (0.001 HBAR) through the HashMed UI                                            |
+| [`1785416899.380741104`] (https://hashscan.io/testnet/transaction/1785416899.380741104) |
 
 ## Accounts (roles)
 
-| Role | Account |
-|------|---------|
-| Buyer (HashPack wallet) | [`0.0.9489233`](https://hashscan.io/testnet/account/0.0.9489233) |
-| Payout — the "lab" receiving payments | [`0.0.9842118`](https://hashscan.io/testnet/account/0.0.9842118) |
+| Role                                          | Account                                                          |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| Buyer (HashPack wallet)                       | [`0.0.9489233`](https://hashscan.io/testnet/account/0.0.9489233) |
+| Payout — the "lab" receiving payments         | [`0.0.9842118`](https://hashscan.io/testnet/account/0.0.9842118) |
 | Facilitator (fee payer, co-signs settlements) | [`0.0.9841920`](https://hashscan.io/testnet/account/0.0.9841920) |
 
 ---
 
-*New settlement links from the demo recording will be appended here.*
+_New settlement links from the demo recording will be appended here._

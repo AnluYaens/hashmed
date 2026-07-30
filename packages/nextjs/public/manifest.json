@@ -1,5 +1,5 @@
 {
-  "name": "Scaffold-HBAR 2 DApp",
-  "description": "A DApp built with Scaffold-HBAR",
+  "name": "HashMed",
+  "description": "Pay-per-read medical lab results, settled on Hedera with x402",
   "iconPath": "logo.svg"
 }

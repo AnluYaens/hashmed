@@ -11,6 +11,7 @@ import {
   LockClosedIcon,
   LockOpenIcon,
 } from "@heroicons/react/24/outline";
+import { ReportTypeBadge, SyntheticBadge } from "~~/components/hashmed/ReportBadges";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import {
   FILE_REGISTRY_ABI,
@@ -21,6 +22,7 @@ import { useHederaEvmAddress, useTargetNetwork } from "~~/hooks/scaffold-hbar";
 import { waitForHederaTransaction, writeContractViaNativeProvider } from "~~/services/web3/hederaContractWrite";
 import { useHederaWalletConnect } from "~~/services/web3/hederaWalletConnect";
 import { payAndGetDownloadUrl } from "~~/services/x402/client";
+import { decodeReportName, formatSpecimenDate, reportTypeLabel } from "~~/utils/hashmed/reportMetadata";
 import { getParsedError, notification } from "~~/utils/scaffold-hbar";
 import { formatTinybar, hbarToTinybar } from "~~/utils/x402";
 
@@ -35,7 +37,7 @@ type PublicFile = {
   contentHash: string;
 };
 
-const FileDetail: NextPage = () => {
+const ReportDetail: NextPage = () => {
   const { id } = useParams<{ id: string }>();
   const { hederaAccountId, hasHederaSession, isConnected, provider } = useHederaWalletConnect();
   const { targetNetwork } = useTargetNetwork();
@@ -52,6 +54,10 @@ const FileDetail: NextPage = () => {
   const registryHederaContractId = getFileRegistryHederaContractId(targetNetwork.id);
   const isOwner = !!ownerEvmAddress && !!file && ownerEvmAddress.toLowerCase() === file.owner.toLowerCase();
 
+  // Medical metadata is encoded into the registry `name` (the contract has no
+  // dedicated columns for it), so decode it for display.
+  const report = useMemo(() => (file ? decodeReportName(file.name) : null), [file]);
+
   const resourceUrl = useMemo(
     () => (typeof window !== "undefined" && id ? `${window.location.origin}/api/files/${id}/download` : ""),
     [id],
@@ -64,7 +70,7 @@ const FileDetail: NextPage = () => {
       const res = await fetch(`/api/files/${id}`);
       const data = (await res.json()) as { file?: PublicFile; error?: string };
       if (!res.ok || !data.file) {
-        setMessage(data.error ?? "File not found");
+        setMessage(data.error ?? "Report not found");
         setStatusLoad("error");
         return;
       }
@@ -94,7 +100,7 @@ const FileDetail: NextPage = () => {
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? "Download failed");
       openUrl(data.url);
-      notification.success("Download ready");
+      notification.success("Report ready");
     } catch (e) {
       notification.error(getParsedError(e));
     } finally {
@@ -116,7 +122,7 @@ const FileDetail: NextPage = () => {
         hederaAccountId,
       });
       notification.remove(toastId);
-      notification.success("Payment settled — download ready");
+      notification.success("Payment settled — report unlocked");
       if (result.transaction) setReceipt(result.transaction);
       openUrl(result.url);
     } catch (e) {
@@ -135,11 +141,11 @@ const FileDetail: NextPage = () => {
     );
   }
 
-  if (statusLoad === "error" || !file) {
+  if (statusLoad === "error" || !file || !report) {
     return (
       <div className="w-full max-w-3xl mx-auto px-5 py-10">
         <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
-          <ArrowLeftIcon className="h-4 w-4" /> Marketplace
+          <ArrowLeftIcon className="h-4 w-4" /> Exchange
         </Link>
         <div className="alert alert-warning">
           <span>{message}</span>
@@ -151,36 +157,51 @@ const FileDetail: NextPage = () => {
   return (
     <div className="w-full max-w-3xl mx-auto px-5 py-10">
       <Link href="/files" className="btn btn-ghost btn-sm gap-1 mb-6">
-        <ArrowLeftIcon className="h-4 w-4" /> Marketplace
+        <ArrowLeftIcon className="h-4 w-4" /> Exchange
       </Link>
 
       <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 flex flex-col gap-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold m-0 min-w-0 break-words leading-snug">{file.name}</h1>
-          {file.isPublic ? (
-            <span className="badge badge-success gap-1 shrink-0 self-start">
-              <LockOpenIcon className="h-3 w-3" /> Public
-            </span>
-          ) : (
-            <span className="badge badge-secondary gap-1 shrink-0 self-start">
-              <LockClosedIcon className="h-3 w-3" /> Private
-            </span>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <ReportTypeBadge code={report.reportType} />
+            <SyntheticBadge />
+            <span className="grow" />
+            {file.isPublic ? (
+              <span className="badge badge-success gap-1 shrink-0">
+                <LockOpenIcon className="h-3 w-3" /> Open access
+              </span>
+            ) : (
+              <span className="badge badge-secondary gap-1 shrink-0">
+                <LockClosedIcon className="h-3 w-3" /> Pay per read
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold m-0 min-w-0 break-words leading-snug">{report.title}</h1>
+          {!report.isStructured && (
+            <p className="text-xs text-base-content/50 m-0">
+              Registered without HashMed metadata — only the report name is available.
+            </p>
           )}
         </div>
 
-        <div className="flex flex-col gap-5 text-sm">
-          <FileDetailField label="Type" value={file.mimeType} />
-          <FileDetailField
-            label="Price"
-            value={file.isPublic ? "Free" : `${formatTinybar(file.priceTinybar)} HBAR / download`}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
+          {report.reportType && <ReportField label="Report type" value={reportTypeLabel(report.reportType)} />}
+          {report.labName && <ReportField label="Issuing lab" value={report.labName} />}
+          {report.specimenDate && <ReportField label="Specimen date" value={formatSpecimenDate(report.specimenDate)} />}
+          {report.patientPseudonym && <ReportField label="Patient pseudonym" value={report.patientPseudonym} mono />}
+          <ReportField label="Format" value={file.mimeType} />
+          <ReportField
+            label="Price per read"
+            value={file.isPublic ? "Free" : `${formatTinybar(file.priceTinybar)} HBAR`}
             emphasize
           />
-          <FileDetailField label="Owner">
+          <ReportField label="Registered by">
             <HederaAddress address={file.owner as `0x${string}`} chain={targetNetwork} align="start" />
-          </FileDetailField>
-          {!file.isPublic && <FileDetailField label="Pays to" value={file.payToAccountId} mono />}
-          <FileDetailField label="SHA-256" value={file.contentHash} mono boxed />
+          </ReportField>
+          {!file.isPublic && <ReportField label="Lab payout account" value={file.payToAccountId} mono />}
         </div>
+
+        <ReportField label="Integrity hash (SHA-256)" value={file.contentHash} mono boxed />
 
         <div className="border-t border-base-200 pt-5">
           {file.isPublic ? (
@@ -190,7 +211,7 @@ const FileDetail: NextPage = () => {
               ) : (
                 <ArrowDownTrayIcon className="h-4 w-4" />
               )}
-              Download (free)
+              Read report (free)
             </button>
           ) : (
             <div className="flex flex-col gap-3">
@@ -204,11 +225,11 @@ const FileDetail: NextPage = () => {
                 ) : (
                   <ArrowDownTrayIcon className="h-4 w-4" />
                 )}
-                Pay {formatTinybar(file.priceTinybar)} HBAR & download
+                Pay {formatTinybar(file.priceTinybar)} HBAR &amp; unlock one read
               </button>
               {!isConnected && (
                 <span className="text-xs text-center text-base-content/50">
-                  Connect HashPack in the header to pay for this download.
+                  Connect HashPack in the header to pay for this read.
                 </span>
               )}
               {isConnected && !hasHederaSession && (
@@ -231,12 +252,12 @@ const FileDetail: NextPage = () => {
       {!file.isPublic && <AgentSnippet fileId={file.fileId} resourceUrl={resourceUrl} />}
 
       {isOwner && registryAddress && (
-        <OwnerControls
+        <LabControls
           file={file}
           onUpdated={load}
           write={async (functionName, args) => {
             if (!provider || !hederaAccountId || !registryAddress) {
-              throw new Error("Connect HashPack to manage this file on-chain.");
+              throw new Error("Connect HashPack to manage this report on-chain.");
             }
             const { transactionId } = await writeContractViaNativeProvider({
               provider,
@@ -256,7 +277,7 @@ const FileDetail: NextPage = () => {
   );
 };
 
-const FileDetailField = ({
+const ReportField = ({
   label,
   value,
   children,
@@ -296,11 +317,11 @@ const AgentSnippet = ({ fileId, resourceUrl }: { fileId: string; resourceUrl: st
     <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 mt-5">
       <div className="flex items-center gap-2 mb-2">
         <CommandLineIcon className="h-4 w-4" />
-        <span className="font-semibold text-sm">Pay from an agent / script</span>
+        <span className="font-semibold text-sm">Fetch this report from an agent</span>
       </div>
       <p className="text-xs text-base-content/60 m-0 mb-3">
-        Any x402 client can pay for file <span className="font-mono break-all">{fileId}</span>. Example with the bundled
-        Node buyer:
+        Any x402 client can pay for report <span className="font-mono break-all">{fileId}</span> — no browser and no
+        account needed. Example with the bundled Node buyer:
       </p>
       <pre className="bg-base-200 rounded-lg p-3 text-xs overflow-x-auto m-0">
         <code>{command}</code>
@@ -309,8 +330,8 @@ const AgentSnippet = ({ fileId, resourceUrl }: { fileId: string; resourceUrl: st
   );
 };
 
-/** Owner-only price / visibility controls. */
-const OwnerControls = ({
+/** Issuing-lab controls for price per read and access mode. */
+const LabControls = ({
   file,
   write,
   onUpdated,
@@ -324,7 +345,7 @@ const OwnerControls = ({
 
   const updatePrice = async () => {
     setBusy("price");
-    const toastId = notification.loading("Updating price…");
+    const toastId = notification.loading("Updating price per read…");
     try {
       await write("setPrice", [file.fileId as `0x${string}`, hbarToTinybar(priceHbar)]);
       notification.remove(toastId);
@@ -340,11 +361,11 @@ const OwnerControls = ({
 
   const toggleVisibility = async () => {
     setBusy("visibility");
-    const toastId = notification.loading("Updating visibility…");
+    const toastId = notification.loading("Updating access mode…");
     try {
       await write("setVisibility", [file.fileId as `0x${string}`, !file.isPublic]);
       notification.remove(toastId);
-      notification.success("Visibility updated");
+      notification.success("Access mode updated");
       onUpdated();
     } catch (e) {
       notification.remove(toastId);
@@ -356,7 +377,10 @@ const OwnerControls = ({
 
   return (
     <div className="bg-base-100 border border-base-300 rounded-2xl p-6 sm:p-8 mt-5">
-      <span className="font-semibold text-sm">Owner controls</span>
+      <span className="font-semibold text-sm">Lab controls</span>
+      <p className="text-xs text-base-content/60 m-0 mt-1">
+        You registered this report, so you can reprice it or switch its access mode.
+      </p>
       <div className="flex flex-col sm:flex-row gap-3 mt-4">
         <div className="join flex-1">
           <input
@@ -365,7 +389,7 @@ const OwnerControls = ({
             className="input input-bordered join-item w-full"
             value={priceHbar}
             onChange={e => setPriceHbar(e.target.value)}
-            aria-label="New price in HBAR"
+            aria-label="New price per read in HBAR"
           />
           <button className="btn btn-outline join-item" disabled={busy !== null} onClick={updatePrice}>
             {busy === "price" ? <span className="loading loading-spinner loading-sm" /> : "Set price"}
@@ -375,9 +399,9 @@ const OwnerControls = ({
           {busy === "visibility" ? (
             <span className="loading loading-spinner loading-sm" />
           ) : file.isPublic ? (
-            "Make private"
+            "Make pay-per-read"
           ) : (
-            "Make public"
+            "Make open access"
           )}
         </button>
       </div>
@@ -385,4 +409,4 @@ const OwnerControls = ({
   );
 };
 
-export default FileDetail;
+export default ReportDetail;

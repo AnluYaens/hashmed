@@ -1,0 +1,120 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Length 2878 >>
+stream
+q
+0.88 0.88 0.9 rg
+BT /F2 52 Tf 0.7071 0.7071 -0.7071 0.7071 118 230 Tm (SYNTHETIC) Tj ET
+Q
+BT /F2 20 Tf 1 0 0 1 56 782 Tm (Northwind Reference Lab) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 56 764 Tm (HashMed - synthetic demonstration report) Tj ET
+0 0 0 rg
+0.8 0.8 0.8 RG 1 w 56 752 m 539 752 l S
+BT /F2 15 Tf 1 0 0 1 56 722 Tm (Complete Blood Count) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 56 698 Tm (Report type:) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 176 698 Tm (CBC) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 56 682 Tm (Specimen date:) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 176 682 Tm (2026-07-12) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 56 666 Tm (Patient pseudonym:) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 176 666 Tm (SYN-4821) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 56 650 Tm (Ordering clinician:) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 176 650 Tm (Not applicable \(synthetic record\)) Tj ET
+BT /F2 10 Tf 1 0 0 1 56 620 Tm (Analyte) Tj ET
+BT /F2 10 Tf 1 0 0 1 300 620 Tm (Result) Tj ET
+BT /F2 10 Tf 1 0 0 1 370 620 Tm (Unit) Tj ET
+BT /F2 10 Tf 1 0 0 1 452 620 Tm (Reference) Tj ET
+0.8 0.8 0.8 RG 1 w 56 612 m 539 612 l S
+BT /F1 10 Tf 1 0 0 1 56 594 Tm (White Blood Cells) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 594 Tm (6.4) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 594 Tm (10^9/L) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 594 Tm (4.0 - 11.0) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 56 574 Tm (Red Blood Cells) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 574 Tm (4.8) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 574 Tm (10^12/L) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 574 Tm (4.2 - 5.9) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 56 554 Tm (Haemoglobin) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 554 Tm (14.1) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 554 Tm (g/dL) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 554 Tm (13.0 - 17.0) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 56 534 Tm (Haematocrit) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 534 Tm (42.0) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 534 Tm (%) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 534 Tm (38.0 - 50.0) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 56 514 Tm (Platelets) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 514 Tm (244) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 514 Tm (10^9/L) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 514 Tm (150 - 400) Tj ET
+0 0 0 rg
+BT /F1 10 Tf 1 0 0 1 56 494 Tm (Neutrophils) Tj ET
+BT /F1 10 Tf 1 0 0 1 300 494 Tm (58) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 370 494 Tm (%) Tj ET
+0 0 0 rg
+0.45 0.45 0.45 rg
+BT /F1 10 Tf 1 0 0 1 452 494 Tm (40 - 70) Tj ET
+0 0 0 rg
+0.8 0.8 0.8 RG 1 w 56 452 m 539 452 l S
+BT /F2 9 Tf 1 0 0 1 56 432 Tm (SYNTHETIC DATA - NOT A REAL PATIENT RECORD.) Tj ET
+0.45 0.45 0.45 rg
+BT /F1 9 Tf 1 0 0 1 56 418 Tm (Generated for the HashMed x402 pay-per-read demo. Not for clinical use.) Tj ET
+0 0 0 rg
+
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000348 00000 n 
+0000000450 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3380
+%%EOF

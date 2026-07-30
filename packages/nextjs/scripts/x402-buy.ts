@@ -1,9 +1,10 @@
 /**
- * x402 agent buyer — pays for a private file from the command line.
+ * x402 agent buyer — pays for one read of a restricted lab report from the
+ * command line.
  *
- * This is the machine-to-machine counterpart to the in-app Burner Wallet flow:
- * it signs the HBAR transfer with a real Hedera key, so it works for any funded
- * account and is the canonical "agent pays per use" demonstration.
+ * This is the machine-to-machine counterpart to the in-app HashPack flow: it
+ * signs the HBAR transfer with a real Hedera key, so it works for any funded
+ * account and is the canonical "agent pays per read" demonstration.
  *
  * Usage:
  *   RESOURCE_URL="http://localhost:3000/api/files/<fileId>/download" \
@@ -48,7 +49,7 @@ async function main() {
   if (first.ok) {
     const body = (await first.json()) as { url?: string };
     if (!body.url) throw new Error("Server returned no download URL");
-    console.log("[x402-buy] File is public — no payment required.");
+    console.log("[x402-buy] Report is open access — no payment required.");
     downloadUrl = body.url;
   } else if (first.status === 402) {
     console.log("[x402-buy] 402 Payment Required — building and signing payment…");
@@ -76,7 +77,7 @@ async function main() {
     throw new Error(`Unexpected status ${first.status}: ${body}`);
   }
 
-  console.log("[x402-buy] Downloading file…");
+  console.log("[x402-buy] Downloading report…");
   const fileRes = await fetch(downloadUrl);
   if (!fileRes.ok) throw new Error(`Download failed with status ${fileRes.status}`);
   const bytes = Buffer.from(await fileRes.arrayBuffer());

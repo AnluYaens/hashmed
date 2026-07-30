@@ -8,6 +8,7 @@
     "dev": "next dev",
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "lint": "next lint",
+    "samples": "tsx scripts/make-sample-reports.ts",
     "serve": "next start",
     "start": "next dev",
     "x402:buy": "tsx scripts/x402-buy.ts",

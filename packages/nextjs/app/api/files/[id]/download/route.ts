@@ -14,18 +14,19 @@ import {
   getResourceServer,
   makeHttpContext,
 } from "~~/services/x402/server";
+import { decodeReportName, downloadFileName } from "~~/utils/hashmed/reportMetadata";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Pay-per-download endpoint and x402 resource server for a single file.
+ * Pay-per-read endpoint and x402 resource server for a single lab report.
  *
  * Flow:
- *  1. Look the file up in the on-chain `FileRegistry`.
- *  2. Public file -> mint a presigned download URL and return it for free.
- *  3. Private file -> require an x402 payment of `priceTinybar` HBAR to the
- *     owner's account, settled fresh on every download:
+ *  1. Look the report up in the on-chain `FileRegistry`.
+ *  2. Open-access report -> mint a presigned download URL and return it for free.
+ *  3. Restricted report -> require an x402 payment of `priceTinybar` HBAR to the
+ *     issuing lab's account, settled fresh on every read:
  *       - No payment header -> 402 with `PAYMENT-REQUIRED`.
  *       - Payment present -> verify, then settle, then (only on success) mint
  *         the download URL and attach the `PAYMENT-RESPONSE` receipt.
@@ -55,11 +56,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
-  // Public files are free for everyone.
+  // Open-access reports are free for everyone.
   if (file.isPublic) {
     const url = await createDownloadUrl({
       objectKey: file.objectKey,
-      fileName: file.name,
+      fileName: downloadFileName(file.name, file.mimeType),
       contentType: file.mimeType,
     });
     return NextResponse.json({ url, file: toPublicFile(file) });
@@ -91,7 +92,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const resourceInfo: ResourceInfo = {
     url: resourceUrl,
-    description: file.name,
+    // The registry `name` carries encoded metadata; the challenge shows the title.
+    description: decodeReportName(file.name).title,
     mimeType: file.mimeType,
   };
 
@@ -134,7 +136,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const url = await createDownloadUrl({
     objectKey: file.objectKey,
-    fileName: file.name,
+    fileName: downloadFileName(file.name, file.mimeType),
     contentType: file.mimeType,
   });
 

@@ -61,6 +61,8 @@ export const Footer = () => {
             <a href="https://docs.hedera.com/" target="_blank" rel="noreferrer" className="link hover:text-primary">
               Docs
             </a>
+            <span className="opacity-30">|</span>
+            <span>Synthetic data only</span>
           </div>
         </ul>
       </div>

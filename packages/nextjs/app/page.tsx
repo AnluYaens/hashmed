@@ -5,9 +5,17 @@ import Link from "next/link";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
-import { ArrowUpTrayIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
+
+/** The four steps a paid read goes through, shown on the landing page. */
+const PAY_PER_READ_STEPS = [
+  { step: "1", title: "Request", body: "A clinic asks for a restricted lab report." },
+  { step: "2", title: "402", body: "HashMed answers HTTP 402 with the price in HBAR." },
+  { step: "3", title: "Sign", body: "HashPack partially signs; the facilitator co-signs as fee payer." },
+  { step: "4", title: "Unlock", body: "Hedera settles in seconds and a one-off link opens the report." },
+];
 
 const Home: NextPage = () => {
   const { address: connectedAddress, status } = useAccount();
@@ -20,37 +28,23 @@ const Home: NextPage = () => {
     <>
       <div className="flex items-center flex-col grow">
         <div className="hedera-gradient dark:bg-none dark:bg-hedera-charcoal w-full py-16 px-5">
-          <div className="flex flex-col items-center max-w-2xl mx-auto">
+          <div className="flex flex-col items-center max-w-3xl mx-auto text-center">
             <Image
               src="/Hedera-Icon-White.svg"
               alt="Hedera icon"
-              width={80}
-              height={80}
+              width={64}
+              height={64}
               className="mb-6 hidden dark:block"
             />
-            <Image src="/Hedera-Icon-Dark.svg" alt="Hedera icon" width={80} height={80} className="mb-6 dark:hidden" />
-            <div className="flex flex-col items-center gap-1 mb-4">
-              <span className="block text-lg font-medium tracking-widest uppercase text-white/80 dark:text-white/60">
-                Built on Hedera
-              </span>
-              <span className="block text-lg font-medium tracking-widest uppercase text-white/80 dark:text-white/60">
-                For
-              </span>
-              <Image
-                src="/Hedera-Wordmark-Lockup-White.svg"
-                alt="Hedera"
-                width={240}
-                height={48}
-                className="mt-1 hidden dark:block"
-              />
-              <Image
-                src="/Hedera-Wordmark-Lockup-Dark.svg"
-                alt="Hedera"
-                width={240}
-                height={48}
-                className="mt-1 dark:hidden"
-              />
-            </div>
+            <Image src="/Hedera-Icon-Dark.svg" alt="Hedera icon" width={64} height={64} className="mb-6 dark:hidden" />
+            <h1 className="text-4xl sm:text-5xl font-bold text-white m-0 mb-3">HashMed</h1>
+            <p className="text-lg sm:text-xl text-white/90 m-0 max-w-2xl">
+              Pay-per-read medical lab results. A lab publishes a report; a clinic pays a fraction of a cent in HBAR to
+              unlock exactly one read.
+            </p>
+            <span className="mt-5 block text-xs font-medium tracking-widest uppercase text-white/70">
+              Settled on Hedera · x402 · Synthetic data only
+            </span>
           </div>
         </div>
 
@@ -71,7 +65,7 @@ const Home: NextPage = () => {
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <p className="font-semibold text-sm text-base-content/60 uppercase tracking-wider m-0">
-                  Connect HashPack to get started
+                  Connect HashPack to publish or pay for a report
                 </p>
               </div>
             )}
@@ -82,14 +76,14 @@ const Home: NextPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
-                <ShoppingBagIcon className="h-7 w-7 text-white" />
+                <DocumentTextIcon className="h-7 w-7 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">File Marketplace</h3>
+              <h3 className="font-bold text-lg mb-2">Browse lab reports</h3>
               <p className="text-base-content/70 text-sm m-0 mb-6">
-                Browse public and private files. Private downloads are gated behind x402 HBAR payments.
+                Open-access reports read for free. Restricted reports unlock per read against an x402 HBAR payment.
               </p>
               <Link href="/files" passHref className="btn btn-primary btn-sm">
-                Open Marketplace
+                Open the exchange
               </Link>
             </div>
 
@@ -97,18 +91,36 @@ const Home: NextPage = () => {
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
                 <ArrowUpTrayIcon className="h-7 w-7 text-white" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Upload a file</h3>
+              <h3 className="font-bold text-lg mb-2">Publish as a lab</h3>
               <p className="text-base-content/70 text-sm m-0 mb-6">
-                Register files on-chain, set a price in HBAR, and store content in private MinIO storage.
+                Register a report on-chain with its price per read; the document itself stays in private storage.
               </p>
               <Link href="/files/upload" passHref className="btn btn-primary btn-sm">
-                Upload
+                Publish a report
               </Link>
             </div>
           </div>
 
           <div className="mt-8 bg-base-100 rounded-2xl shadow-md p-8 border border-base-300">
-            <h3 className="font-bold text-lg mb-4 text-center">Quick Start</h3>
+            <h3 className="font-bold text-lg mb-1 text-center">How one paid read works</h3>
+            <p className="text-sm text-base-content/60 text-center m-0 mb-6">
+              No account, no subscription — the payment is the access control.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {PAY_PER_READ_STEPS.map(({ step, title, body }) => (
+                <div key={step} className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg leading-none mt-0.5">{step}</span>
+                  <div>
+                    <p className="m-0 font-medium text-sm">{title}</p>
+                    <p className="m-0 text-xs text-base-content/60">{body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 bg-base-100 rounded-2xl shadow-md p-8 border border-base-300">
+            <h3 className="font-bold text-lg mb-4 text-center">Run it locally</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-start gap-3">
                 <span className="font-bold text-primary text-lg leading-none mt-0.5">1</span>

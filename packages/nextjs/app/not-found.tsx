@@ -6,9 +6,9 @@ export default function NotFound() {
       <div className="text-center">
         <h1 className="text-6xl font-bold m-0 mb-1">404</h1>
         <h2 className="text-2xl font-semibold m-0">Page Not Found</h2>
-        <p className="text-base-content/70 m-0 mb-4">The page you&apos;re looking for doesn&apos;t exist.</p>
-        <Link href="/" className="btn btn-primary">
-          Go Home
+        <p className="text-base-content/70 m-0 mb-4">This page isn&apos;t part of HashMed.</p>
+        <Link href="/files" className="btn btn-primary">
+          Browse lab reports
         </Link>
       </div>
     </div>
