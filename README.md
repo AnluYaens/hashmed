@@ -68,6 +68,9 @@ yarn hardhat:deploy --network hederaTestnet
 yarn infra:up          # MinIO + self-hosted x402 facilitator (Docker)
 yarn next:dev          # http://localhost:3000
 
+# production mode (note: `yarn next:start` runs the dev server in this template)
+yarn next:build && yarn workspace @sh/nextjs serve
+
 # verify
 yarn hardhat:test      # 30 passing
 ```
