@@ -69,19 +69,36 @@ After `yarn hardhat:deploy`, ABIs and addresses land in `packages/nextjs/contrac
 
 ### Key paths
 
-| Area | Path |
-| --- | --- |
-| x402 resource server | `packages/nextjs/services/x402/server.ts` |
-| x402 browser client | `packages/nextjs/services/x402/client.ts` |
-| HashPack x402 signer | `packages/nextjs/services/x402/walletSigner.ts` |
-| Native contract writes | `packages/nextjs/services/web3/hederaContractWrite.ts` |
-| Hedera contract id resolution | `packages/nextjs/utils/scaffold-hbar/hederaContractId.ts` |
-| Marketplace listing hook | `packages/nextjs/hooks/scaffold-hbar/useRegistryFileListing.ts` |
-| MinIO helper | `packages/nextjs/services/storage/client.ts` |
-| On-chain registry reads (server) | `packages/nextjs/services/registry/server.ts` |
-| Upload / download routes | `packages/nextjs/app/api/files/` |
-| Marketplace UI | `packages/nextjs/app/files/` |
+| Area                             | Path                                                            |
+| -------------------------------- | --------------------------------------------------------------- |
+| x402 resource server             | `packages/nextjs/services/x402/server.ts`                       |
+| x402 browser client              | `packages/nextjs/services/x402/client.ts`                       |
+| HashPack x402 signer             | `packages/nextjs/services/x402/walletSigner.ts`                 |
+| Native contract writes           | `packages/nextjs/services/web3/hederaContractWrite.ts`          |
+| Hedera contract id resolution    | `packages/nextjs/utils/scaffold-hbar/hederaContractId.ts`       |
+| Marketplace listing hook         | `packages/nextjs/hooks/scaffold-hbar/useRegistryFileListing.ts` |
+| MinIO helper                     | `packages/nextjs/services/storage/client.ts`                    |
+| On-chain registry reads (server) | `packages/nextjs/services/registry/server.ts`                   |
+| Upload / download routes         | `packages/nextjs/app/api/files/`                                |
+| Marketplace UI                   | `packages/nextjs/app/files/`                                    |
 
 ## Packaging
 
 Template manifest: `template.json` (branch `templates/x402-pay-per-use`). See RUNBOOK.md § Iteration 5.
+
+## HashMed additions
+
+This fork = "HashMed", a pay-per-read medical lab-results marketplace
+(bounty deadline: July 31, 11:59 PM ET). Read CONTEXT.md and PHASES.md.
+
+Hard rules:
+
+1. NEVER modify packages/hardhat contract code. Medical layer = Next.js UI/metadata only.
+2. NEVER commit .env or private keys. Never print secret values.
+3. Run `yarn hardhat:test` before and after every change; if the pass count drops, STOP.
+4. Keep reads on getFiles/getFileCount — never switch to eth_getLogs or useScaffoldEventHistory.
+5. Don't touch the x402 payment flow, walletSigner, or facilitator logic while reskinning.
+6. Synthetic/fake medical data only.
+7. Stop and ask before: adding/upgrading dependencies, changing wallet/namespace
+   config, renaming env vars, or any change outside packages/nextjs.
+8. Small, focused commits. No scope creep (no auth, no accounts, no subscriptions).
