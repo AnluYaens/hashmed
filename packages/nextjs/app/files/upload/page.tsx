@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NextPage } from "next";
+import { useLocalStorage } from "usehooks-ts";
 import { type Address, type Hex, toHex } from "viem";
 import { ArrowUpTrayIcon, BeakerIcon } from "@heroicons/react/24/outline";
 import {
@@ -29,6 +30,9 @@ const HEDERA_ID_RE = /^\d+\.\d+\.\d+$/;
 
 /** A micro-price: small enough that paying per read is unremarkable. */
 const DEFAULT_PRICE_HBAR = "0.001";
+
+/** Remembers the payout account across sessions so a lab re-publishes without retyping it. */
+const LAST_PAYOUT_STORAGE_KEY = "hashmed.lastPayoutAccount";
 
 /** SHA-256 of a file's bytes, as a `bytes32` hex string for on-chain integrity. */
 async function sha256Hex(file: File): Promise<Hex> {
@@ -57,14 +61,29 @@ const PublishReport: NextPage = () => {
   const [busy, setBusy] = useState(false);
   const [loadingSample, setLoadingSample] = useState(false);
 
+  // `initializeWithValue: false` keeps the server render and the first client render
+  // both empty; the stored value arrives in an effect, so there is no hydration mismatch.
+  const [lastPayout, setLastPayout] = useLocalStorage(LAST_PAYOUT_STORAGE_KEY, "", {
+    initializeWithValue: false,
+  });
+  const prefilledPayout = useRef(false);
+
   useEffect(() => {
     setPatientPseudonym(randomPatientPseudonym());
     setSpecimenDate(new Date().toISOString().slice(0, 10));
   }, []);
 
+  // Prefill once, and only from a well-formed value, so neither a cross-tab write nor a
+  // corrupted entry can stomp what the lab is typing.
+  useEffect(() => {
+    if (prefilledPayout.current || payTo || !HEDERA_ID_RE.test(lastPayout)) return;
+    prefilledPayout.current = true;
+    setPayTo(lastPayout);
+  }, [lastPayout, payTo]);
+
   const registryAddress = getFileRegistryAddress(targetNetwork.id);
   const registryHederaContractId = getFileRegistryHederaContractId(targetNetwork.id);
-  const effectivePayTo = payTo || hederaAccountId || "";
+  const effectivePayTo = payTo.trim();
   const ownerEvmAddress = evmAddress as Address | undefined;
 
   const priceError = useMemo(() => {
@@ -83,6 +102,15 @@ const PublishReport: NextPage = () => {
     return PSEUDONYM_PATTERN.test(patientPseudonym) ? null : "Use a pseudonym like SYN-4821 — never a real identifier";
   }, [patientPseudonym]);
 
+  const payToError = useMemo(() => {
+    if (!effectivePayTo) return "A payout account is required";
+    return HEDERA_ID_RE.test(effectivePayTo) ? null : "Use a Hedera account id like 0.0.1234";
+  }, [effectivePayTo]);
+
+  // A transfer aggregates per account, so paying yourself nets to zero and the
+  // facilitator rejects the payment before it ever settles.
+  const isSelfPayout = !!hederaAccountId && effectivePayTo === hederaAccountId;
+
   const priceUsd = useMemo(() => {
     if (isPublic || hbarUsdPrice <= 0) return null;
     const parsed = Number(priceHbar);
@@ -100,6 +128,7 @@ const PublishReport: NextPage = () => {
     !!ownerEvmAddress &&
     !!registryAddress &&
     !priceError &&
+    !payToError &&
     !busy &&
     hasHederaSession;
 
@@ -213,6 +242,9 @@ const PublishReport: NextPage = () => {
       await waitForHederaTransaction(transactionId, targetNetwork.id);
       notification.remove(registerToastId);
       notification.success("Report published!");
+      // Only after the registration reached consensus — a rejected signature or a failed
+      // upload must not poison the next session's default.
+      setLastPayout(payToTrimmed);
 
       const fileId = computeFileId(ownerEvmAddress, objectKey);
       router.push(`/files/${fileId}`);
@@ -394,14 +426,28 @@ const PublishReport: NextPage = () => {
           <span className="text-sm font-medium">Lab payout account (receives payments)</span>
           <input
             type="text"
-            className="input input-bordered w-full"
-            placeholder={hederaAccountId ?? "0.0.1234"}
+            className={`input input-bordered w-full ${effectivePayTo && payToError ? "input-error" : ""}`}
+            placeholder="0.0.1234"
             value={payTo}
             onChange={e => setPayTo(e.target.value)}
           />
-          <span className="text-xs text-base-content/50">
-            {hederaAccountId ? `Defaults to your account ${hederaAccountId}` : "Your Hedera account id (0.0.x)"}
-          </span>
+          {effectivePayTo && payToError ? (
+            <span className="text-xs text-error">{payToError}</span>
+          ) : isSelfPayout ? (
+            <span className="text-xs text-warning">
+              This is the account you&apos;re connected with — you&apos;d be paying yourself. Hedera nets a
+              self-transfer to zero, so the facilitator rejects it. Use a second account to demo a real payment.
+            </span>
+          ) : (
+            <span className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+              Where each read&apos;s HBAR lands. Use a different account than the wallet you&apos;ll pay from.
+              {hederaAccountId && (
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setPayTo(hederaAccountId)}>
+                  Use my account ({hederaAccountId})
+                </button>
+              )}
+            </span>
+          )}
         </label>
 
         <button className="btn btn-primary gap-2" disabled={!canSubmit} onClick={handleSubmit}>
