@@ -4,5 +4,6 @@ export * from "./block";
 export * from "./decodeTxData";
 export * from "./getParsedError";
 export * from "./hbarPrice";
+export * from "./hashscan";
 export * from "./hederaAccountId";
 export * from "./hederaContractId";
