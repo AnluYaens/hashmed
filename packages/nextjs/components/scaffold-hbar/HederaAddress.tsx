@@ -41,7 +41,7 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink, alig
     setTimeout(() => setCopied(false), 800);
   };
 
-  const addressContent = <span className="text-sm font-normal">{displayAddress}</span>;
+  const addressContent = <span className="text-sm font-normal tabular-nums">{displayAddress}</span>;
 
   const alignClass = align === "start" ? "items-start" : "items-center";
 
@@ -67,7 +67,7 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink, alig
       {isLoading ? (
         <span className="text-xs text-base-content/60 animate-pulse">Resolving Hedera Account ID…</span>
       ) : accountId ? (
-        <span className="text-xs text-base-content/80">Hedera Account ID: {accountId}</span>
+        <span className="text-xs text-base-content/80 tabular-nums">Hedera Account ID: {accountId}</span>
       ) : null}
     </div>
   );

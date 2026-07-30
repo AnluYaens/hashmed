@@ -36,11 +36,11 @@ export const WalletConnectButton = () => {
       <details ref={menuRef}>
         <summary className="btn btn-secondary btn-sm list-none" title={accountId ?? "Connected"}>
           <span className="hidden sm:inline">HashPack</span>
-          <span>{shortAccount}</span>
+          <span className="tabular-nums">{shortAccount}</span>
         </summary>
         <ul className="menu dropdown-content mt-2 z-[60] w-64 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg">
           <li className="menu-title">
-            <span>{accountId}</span>
+            <span className="tabular-nums">{accountId}</span>
           </li>
           <li>
             <button

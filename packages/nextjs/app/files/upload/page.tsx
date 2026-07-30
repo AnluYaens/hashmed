@@ -414,14 +414,14 @@ const PublishReport: NextPage = () => {
             <input
               type="text"
               inputMode="decimal"
-              className={`input input-bordered w-full ${priceError ? "input-error" : ""}`}
+              className={`input input-bordered w-full tabular-nums ${priceError ? "input-error" : ""}`}
               value={priceHbar}
               onChange={e => setPriceHbar(e.target.value)}
             />
             {priceError ? (
               <span className="text-xs text-error">{priceError}</span>
             ) : (
-              <span className="text-xs text-base-content/50">
+              <span className="text-xs text-base-content/50 tabular-nums">
                 {priceUsd !== null ? `About $${priceUsd.toFixed(5)} per read at the current HBAR price.` : ""}
               </span>
             )}
@@ -432,7 +432,7 @@ const PublishReport: NextPage = () => {
           <span className="text-sm font-medium">Lab payout account (receives payments)</span>
           <input
             type="text"
-            className={`input input-bordered w-full ${effectivePayTo && payToError ? "input-error" : ""}`}
+            className={`input input-bordered w-full tabular-nums ${effectivePayTo && payToError ? "input-error" : ""}`}
             placeholder="0.0.1234"
             value={payTo}
             onChange={e => setPayTo(e.target.value)}
@@ -448,7 +448,11 @@ const PublishReport: NextPage = () => {
             <span className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
               Where each read&apos;s HBAR lands. Use a different account than the wallet you&apos;ll pay from.
               {hederaAccountId && (
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setPayTo(hederaAccountId)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs tabular-nums"
+                  onClick={() => setPayTo(hederaAccountId)}
+                >
                   Use my account ({hederaAccountId})
                 </button>
               )}

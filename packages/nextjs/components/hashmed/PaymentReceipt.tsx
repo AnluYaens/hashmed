@@ -46,7 +46,7 @@ export const PaymentReceipt = ({ transactionId, chainId, payer }: PaymentReceipt
         <span className="text-xs text-base-content/50">Explorer link unavailable on this network.</span>
       )}
 
-      {payer && <span className="text-xs text-base-content/50 break-all">Paid by {payer}</span>}
+      {payer && <span className="text-xs text-base-content/50 break-all tabular-nums">Paid by {payer}</span>}
     </div>
   );
 };

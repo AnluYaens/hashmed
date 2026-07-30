@@ -19,6 +19,8 @@
   --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --font-sans: "Styrene A Web", "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  /* --font-space-grotesk is set on <html> by next/font in app/layout.tsx. */
+  --font-heading: var(--font-space-grotesk), "Styrene A Web", "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --color-hedera-ultraviolet: #8259ef;
   --color-hedera-azure: #0031ff;
   --color-hedera-charcoal: #11151d;
@@ -120,6 +122,15 @@
   h4 {
     margin-bottom: 0.5rem;
     line-height: 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
   }
 }
 

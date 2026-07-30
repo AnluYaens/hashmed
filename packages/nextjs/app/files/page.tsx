@@ -184,7 +184,9 @@ const Marketplace: NextPage = () => {
                   {file.isPublic ? (
                     <span className="text-sm font-medium text-success">Free read</span>
                   ) : (
-                    <span className="text-sm font-medium">{formatTinybar(file.priceTinybar)} HBAR / read</span>
+                    <span className="text-sm font-medium tabular-nums">
+                      {formatTinybar(file.priceTinybar)} HBAR / read
+                    </span>
                   )}
                   <span className="flex items-baseline gap-1.5 min-w-0 text-xs">
                     <span className="shrink-0 text-base-content/50">Issuing lab</span>

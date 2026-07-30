@@ -228,7 +228,7 @@ const ReportDetail: NextPage = () => {
           ) : (
             <div className="flex flex-col gap-3">
               <button
-                className="btn btn-primary w-full gap-2"
+                className="btn btn-primary w-full gap-2 tabular-nums"
                 disabled={downloading || !canPay}
                 onClick={handlePaidDownload}
               >
@@ -318,6 +318,7 @@ const ReportField = ({
     {children ?? (
       <span
         className={[
+          "tabular-nums",
           emphasize ? "font-medium text-base" : "",
           mono ? "font-mono text-xs break-all" : "break-words",
           boxed ? "bg-base-200 rounded-lg px-3 py-2 block" : "",
@@ -407,7 +408,7 @@ const LabControls = ({
           <input
             type="text"
             inputMode="decimal"
-            className="input input-bordered input-sm join-item w-full"
+            className="input input-bordered input-sm join-item w-full tabular-nums"
             value={priceHbar}
             onChange={e => setPriceHbar(e.target.value)}
             aria-label="New price per read in HBAR"

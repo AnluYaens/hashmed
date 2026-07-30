@@ -1,3 +1,4 @@
+import { Space_Grotesk } from "next/font/google";
 import "@scaffold-hbar-ui/components/styles.css";
 import type { Viewport } from "next";
 import { ScaffoldHbarAppWithProviders } from "~~/components/ScaffoldHbarAppWithProviders";
@@ -10,6 +11,13 @@ export const metadata = getMetadata({
   description: "Pay-per-read medical lab results, settled on Hedera with x402. Synthetic demo data only.",
 });
 
+// Heading face only — body text stays on the Styrene/Montserrat stack from globals.css.
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-space-grotesk",
+});
+
 // Next rejects `themeColor` inside `metadata`; it belongs to the viewport export.
 export const viewport: Viewport = {
   themeColor: [
@@ -20,7 +28,7 @@ export const viewport: Viewport = {
 
 const ScaffoldHbarApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={spaceGrotesk.variable}>
       <body>
         <ThemeProvider enableSystem>
           <ScaffoldHbarAppWithProviders>{children}</ScaffoldHbarAppWithProviders>
