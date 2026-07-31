@@ -87,7 +87,7 @@ yarn hardhat:test      # 30 passing
 
 Full setup details in [RUNBOOK.md](./RUNBOOK.md).
 
-## What's ours vs. the template
+## What I built vs. the template
 
 HashMed is built on the official [`scaffold-hbar`](https://github.com/hedera-dev/scaffold-hbar) `x402-pay-per-use` reference (as the bounty suggests). On top of it we built:
 

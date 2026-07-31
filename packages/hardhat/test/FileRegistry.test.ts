@@ -333,7 +333,7 @@ describe("FileRegistry", function () {
     it("clamps the page size to MAX_PAGE_SIZE", async function () {
       // Registers MAX_PAGE_SIZE + 2 files one at a time; against a forked network each
       // one is a real round trip, so this needs far more than the default 40s timeout.
-      this.timeout(180_000);
+      this.timeout(420_000);
 
       const { registry } = await deployFixture();
       const maxPage = await registry.MAX_PAGE_SIZE();
