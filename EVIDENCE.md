@@ -13,6 +13,9 @@ Proof of real x402 payments settling on Hedera testnet. All transactions below a
 | 1   | First end-to-end pay-per-read: buyer paid 1 HBAR via HTTP 402 → facilitator co-signed and settled → download unlocked                                | [`1785413554.921013104`](https://hashscan.io/testnet/transaction/1785413554.921013104) |
 | 2   | Pay-per-read of a synthetic CBC report (0.001 HBAR) through the HashMed UI                                                                           | [`1785416899.380741104`](https://hashscan.io/testnet/transaction/1785416899.380741104) |
 | 3   | Agent-initiated payment: the bundled `yarn x402:buy` Node script paid 0.001 HBAR and downloaded the report machine-to-machine — no browser, no human | [`1785432372.855648259`](https://hashscan.io/testnet/transaction/1785432372.855648259) |
+| 4   | Publish + pay-per-read during the demo recording: report registered on-chain, then unlocked with a 0.001 HBAR payment through the HashMed UI         | [`1785519538.233167780`](https://hashscan.io/testnet/transaction/1785519538.233167780) |
+| 5   | Second pay-per-read settlement during the demo recording (HashPack buyer)                                                                            | [`1785519757.035914645`](https://hashscan.io/testnet/transaction/1785519757.035914645) |
+| 6   | Agent payment during the demo recording: `yarn x402:buy` paid and downloaded the report machine-to-machine                                           | [`1785519868.386906910`](https://hashscan.io/testnet/transaction/1785519868.386906910) |
 
 ## Accounts (roles)
 
@@ -24,4 +27,4 @@ Proof of real x402 payments settling on Hedera testnet. All transactions below a
 
 ---
 
-_New settlement links from the demo recording will be appended here._
+_Demo video: [https://youtu.be/U8g8oNouIbc](https://youtu.be/U8g8oNouIbc) — transactions 4–6 are the ones settled on camera._

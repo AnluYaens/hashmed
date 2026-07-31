@@ -2,7 +2,7 @@
 
 **A lab publishes a report. A clinic pays ~$0.0001 in HBAR through HTTP 402. The payment settles on Hedera in seconds and unlocks exactly one read. No accounts, no subscriptions, no invoices.**
 
-Built for the [Hedera x402 bounty](https://hedera.com/x402-bounty) · Demo video: **[LINK HERE]**
+Built for the [Hedera x402 bounty](https://hedera.com/x402-bounty) · Demo video: **[Watch on YouTube](https://youtu.be/U8g8oNouIbc)**
 
 ## Proof it works (live on testnet)
 
@@ -89,7 +89,7 @@ Full setup details in [RUNBOOK.md](./RUNBOOK.md).
 
 ## What I built vs. the template
 
-HashMed is built on the official [`scaffold-hbar`](https://github.com/hedera-dev/scaffold-hbar) `x402-pay-per-use` reference (as the bounty suggests). On top of it we built:
+HashMed is built on the official [`scaffold-hbar`](https://github.com/hedera-dev/scaffold-hbar) `x402-pay-per-use` reference (as the bounty suggests). On top of it I built:
 
 - The **medical domain layer**: on-chain report metadata (versioned JSON in `name`, with graceful fallback for legacy listings), report-type catalog, pseudonym validation, synthetic sample generator + one-click publish flow
 - The **Lab Report Exchange UI**: landing, exchange with search/filters, report detail with a live 402 → Sign → Settle → Unlock stepper, clickable HashScan payment receipts, self-payment guards on both publish and buy paths
